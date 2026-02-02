@@ -3,7 +3,6 @@ name: Katona last-date checker
 on:
   schedule:
     # UTC times. We run twice; script only sends when it is 08:00 in Budapest.
-    - cron: "0 6 * * *"
     - cron: "0 7 * * *"
   workflow_dispatch:
 
