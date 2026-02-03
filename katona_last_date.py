@@ -1,14 +1,14 @@
 import os
 import re
 import json
-import smtplib
 import ssl
+import smtplib
 from email.message import EmailMessage
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from bs4 import BeautifulSoup
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
+
 
 BASE_URL = "https://katona.jegymester.hu/main"
 NO_EVENTS_TEXT = "Sajnáljuk, de az Ön által megadott szűrési feltételek alapján nem találtunk egy eseményt sem."
@@ -18,39 +18,58 @@ HU_MONTHS = {
     "július": 7, "augusztus": 8, "szeptember": 9, "október": 10, "november": 11, "december": 12
 }
 
+
 def budapest_now():
     return datetime.now(tz=ZoneInfo("Europe/Budapest"))
 
-def should_send_now() -> bool:
-    """
-    Only send at 08:00 Budapest time.
-    Allow manual run override with FORCE_SEND=1.
-    """
-    if os.environ.get("FORCE_SEND", "").strip() == "1":
-        return True
-    now = budapest_now()
-    return now.hour == 8
 
 def build_url(active_page: int) -> str:
-    # Keep it identical to what you use in browser:
-    # /main?activePage=1&osl=events&ot=tickets&searchPhrase=
-    return f"{BASE_URL}?activePage={active_page}&osl=events&ot=tickets&searchPhrase="
+    # ugyanazokat a query paramétereket használjuk, mint a weboldal
+    # (a searchPhrase üres marad)
+    return (
+        f"{BASE_URL}?activePage={active_page}"
+        f"&osl=events&ot=tickets&searchPhrase="
+    )
 
-def page_is_empty(rendered_html: str) -> bool:
-    # We check rendered DOM (Playwright gives final HTML after JS)
-    return NO_EVENTS_TEXT in rendered_html
 
-def extract_dates_from_rendered_html(rendered_html: str):
+def page_is_empty(page) -> bool:
     """
-    Extract event dates from RENDERED HTML (post-JS).
-    Returns sorted unique list of date objects.
+    Üres oldal = megjelenik a kék info alert a NO_EVENTS_TEXT-tel.
     """
-    soup = BeautifulSoup(rendered_html, "html.parser")
-    text = soup.get_text(" ", strip=True)
+    try:
+        # Megvárjuk, hogy vagy a lista/komponens, vagy az alert előjöjjön
+        page.wait_for_selector("sat-productions-and-events-list, div.alert.alert-info", timeout=15000)
+    except PlaywrightTimeoutError:
+        # ha semmi sem jön, tekintsük üresnek / hibásnak
+        return True
 
+    empty_alert = page.locator("div.alert.alert-info", has_text=NO_EVENTS_TEXT)
+    if empty_alert.count() > 0:
+        return True
+
+    # Biztonsági fallback: ha nincs alert, de semmilyen értelmes tartalom sincs,
+    # akkor is lehet üres. (Óvatosan.)
+    # Itt csak azt nézzük, hogy van-e legalább valami link/kártya.
+    possible_event = page.locator("sat-productions-and-events-list a")
+    if possible_event.count() == 0:
+        # lehet layout változott, de nem akarunk végtelen loopot -> üresnek vesszük
+        return True
+
+    return False
+
+
+def extract_dates_from_text(text: str):
+    """
+    Dátum kinyerés teljes oldal textből.
+    Több minta:
+      1) 2026.01.30 (vagy 2026. 01. 30)
+      2) 2026-01-30
+      3) 2026. január 30.
+      4) 30 január 2026
+    """
     dates = []
 
-    # 1) 2026.01.30 or 2026. 01. 30
+    # 1) 2026.01.30
     for m in re.finditer(r"\b(20\d{2})\.\s*(0?[1-9]|1[0-2])\.\s*(0?[1-9]|[12]\d|3[01])\b", text):
         y, mo, d = int(m.group(1)), int(m.group(2)), int(m.group(3))
         try:
@@ -82,8 +101,24 @@ def extract_dates_from_rendered_html(rendered_html: str):
             except ValueError:
                 pass
 
-    # de-dup
+    # 4) 30 január 2026
+    for m in re.finditer(
+        r"\b(0?[1-9]|[12]\d|3[01])\s*(január|február|március|április|május|június|július|augusztus|szeptember|október|november|december)\s*(20\d{2})\b",
+        text,
+        re.IGNORECASE
+    ):
+        d = int(m.group(1))
+        mon_name = m.group(2).lower()
+        y = int(m.group(3))
+        mo = HU_MONTHS.get(mon_name)
+        if mo:
+            try:
+                dates.append(datetime(y, mo, d).date())
+            except ValueError:
+                pass
+
     return sorted(set(dates))
+
 
 def load_state(path="state.json"):
     if not os.path.exists(path):
@@ -91,15 +126,18 @@ def load_state(path="state.json"):
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 
+
 def save_state(state, path="state.json"):
     with open(path, "w", encoding="utf-8") as f:
         json.dump(state, f, ensure_ascii=False, indent=2)
+
 
 def send_email(subject: str, body: str):
     smtp_user = os.environ["SMTP_USER"]
     smtp_pass = os.environ["SMTP_PASS"]
     to_emails_raw = os.environ["TO_EMAILS"]
 
+    # TO_EMAILS: vesszővel vagy pontosvesszővel elválasztott lista
     to_emails = [e.strip() for e in re.split(r"[;,]", to_emails_raw) if e.strip()]
 
     msg = EmailMessage()
@@ -113,124 +151,133 @@ def send_email(subject: str, body: str):
         server.login(smtp_user, smtp_pass)
         server.send_message(msg)
 
-def get_rendered_html_for_page(page_obj, active_page: int) -> str:
-    url = build_url(active_page)
 
-    # "networkidle" sometimes never happens on SPAs;
-    # so we do a safe approach: domcontentloaded + a short wait.
-    page_obj.goto(url, wait_until="domcontentloaded", timeout=60000)
-    page_obj.wait_for_timeout(1500)
-
-    # wait a bit for the list or alert to appear
-    # if selector exists, great; if not, still proceed
-    try:
-        page_obj.wait_for_selector("div.alert", timeout=7000)
-    except Exception:
-        pass
-
-    return page_obj.content()
-
-def is_nonempty_page(page_obj, active_page: int) -> bool:
-    html = get_rendered_html_for_page(page_obj, active_page)
-    return not page_is_empty(html)
-
-def find_last_nonempty_page(page_obj, start_page=1, max_page_cap=200) -> int:
+def find_last_nonempty_page(page, max_pages=60) -> int:
     """
-    Find last page that still has events.
-    Strategy: exponential search to find an empty page, then binary search.
-    Returns last_nonempty_page (>=1) or 0 if page1 is empty.
+    Bináris kereséssel megkeresi az utolsó oldalt, ahol még van esemény.
+    Feltételezés: ha egy oldal üres, az utána következők is üresek.
     """
-    if not is_nonempty_page(page_obj, start_page):
+    # Először gyors sanity: page 1 legyen nem üres, különben valami gond van
+    page.goto(build_url(1), wait_until="domcontentloaded", timeout=60000)
+    page.wait_for_timeout(1200)
+    if page_is_empty(page):
         return 0
 
-    lo = start_page
-    hi = start_page
-
-    # exponential climb until we find an empty page or hit cap
+    # találjunk egy upper boundot, ami már üres
+    lo = 1
+    hi = None
     step = 1
-    while True:
-        next_hi = hi + step
-        if next_hi > max_page_cap:
-            next_hi = max_page_cap
+    probe = 1
 
-        if is_nonempty_page(page_obj, next_hi):
-            lo = next_hi
-            hi = next_hi
-            if hi >= max_page_cap:
-                return lo
-            step *= 2
-        else:
-            hi = next_hi
+    while True:
+        probe = lo + step
+        if probe > max_pages:
+            # nem találtunk üreset max_pages-ig -> tekintsük max_pages-nek
+            hi = max_pages + 1
             break
 
-    # binary search between (lo nonempty) and (hi empty)
+        page.goto(build_url(probe), wait_until="domcontentloaded", timeout=60000)
+        page.wait_for_timeout(1200)
+
+        if page_is_empty(page):
+            hi = probe
+            break
+
+        lo = probe
+        step *= 2  # exponenciális növelés
+
+    # most lo biztos nem üres, hi biztos üres (vagy max_pages+1)
     left = lo
-    right = hi
+    right = hi  # üres
+
+    # bináris keresés: utolsó nem üres = left
     while left + 1 < right:
         mid = (left + right) // 2
-        if is_nonempty_page(page_obj, mid):
-            left = mid
-        else:
+        page.goto(build_url(mid), wait_until="domcontentloaded", timeout=60000)
+        page.wait_for_timeout(1200)
+
+        if page_is_empty(page):
             right = mid
+        else:
+            left = mid
 
     return left
 
-def find_latest_event_date(page_obj, last_page: int):
+
+def scrape_latest_date(page, last_page: int):
     """
-    Scan pages 1..last_page and find max date in rendered text.
+    Végigmegy 1..last_page, és kinyeri a max dátumot.
     """
     all_dates = []
+
     for p in range(1, last_page + 1):
-        html = get_rendered_html_for_page(page_obj, p)
-        dates = extract_dates_from_rendered_html(html)
+        page.goto(build_url(p), wait_until="domcontentloaded", timeout=60000)
+        page.wait_for_timeout(1200)
+
+        if page_is_empty(page):
+            # elvileg last_page-ig nem szabadna üresnek lennie,
+            # de ha mégis: ugorjuk át
+            continue
+
+        text = page.inner_text("body")
+        dates = extract_dates_from_text(text)
         all_dates.extend(dates)
+
     if not all_dates:
         return None
+
     return max(all_dates)
 
+
 def main():
-    if not should_send_now():
-        print("Not 08:00 in Budapest, exiting without sending.")
-        return
+    # --- Playwright ---
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        page = browser.new_page()
 
-    with sync_playwright() as pw:
-        browser = pw.chromium.launch(headless=True)
-        context = browser.new_context(locale="hu-HU")
-        page = context.new_page()
+        # Kicsit "normál" böngészőnek látszódjunk
+        page.set_viewport_size({"width": 1280, "height": 900})
 
-        last_nonempty = find_last_nonempty_page(page, start_page=1, max_page_cap=200)
-        if last_nonempty == 0:
-            subject = "Katona jegymester – hiba (már az 1. oldal is üres)"
-            body = "Az 1. oldalon sincs esemény (vagy a oldal nem töltött be rendesen)."
+        last_page = find_last_nonempty_page(page, max_pages=60)
+        if last_page == 0:
+            subject = "Katona jegymester – hiba (1. oldal is üres)"
+            body = (
+                "A script szerint már az 1. oldal is üres.\n"
+                "Lehet hálózati hiba, oldalváltozás vagy blokkolás.\n"
+            )
             send_email(subject, body)
             browser.close()
             return
 
-        latest = find_latest_event_date(page, last_nonempty)
-
+        latest = scrape_latest_date(page, last_page)
         browser.close()
 
     if latest is None:
         subject = "Katona jegymester – hiba (nem találtam dátumot)"
-        body = f"Nem sikerült dátumot kinyerni. Utolsó nem üres oldal: {last_nonempty}"
+        body = (
+            "Nem sikerült dátumokat kinyerni.\n"
+            f"Utolsó nem üres oldal (becslés): {last_page}\n"
+        )
         send_email(subject, body)
         return
 
+    # --- state ---
     state = load_state("state.json")
     prev_str = state.get("latest_date")
     prev = datetime.strptime(prev_str, "%Y-%m-%d").date() if prev_str else None
 
     state["latest_date"] = latest.isoformat()
-    state["last_page"] = last_nonempty
+    state["last_page"] = last_page
     state["checked_at_budapest"] = budapest_now().isoformat()
     save_state(state, "state.json")
 
+    # --- email content (mindig küldünk) ---
     if prev is None:
         subject = "Katona jegymester – első futás"
         body = (
             "Első futás (nincs korábbi összehasonlítás).\n\n"
             f"Legutolsó (max) dátum: {latest.isoformat()}\n"
-            f"Utolsó nem üres oldal: {last_nonempty}\n"
+            f"Utolsó nem üres oldal: {last_page}\n"
         )
     elif latest > prev:
         subject = "Katona jegymester – ÚJ dátum került fel"
@@ -238,26 +285,27 @@ def main():
             "Változás!\n\n"
             f"Korábbi max dátum: {prev.isoformat()}\n"
             f"Új max dátum:      {latest.isoformat()}\n"
-            f"Utolsó nem üres oldal: {last_nonempty}\n"
+            f"Utolsó nem üres oldal: {last_page}\n"
         )
     elif latest < prev:
         subject = "Katona jegymester – FIGYELEM: a max dátum csökkent"
         body = (
-            "Furcsa változás (lehet törlés / szűrés / oldalváltozás).\n\n"
+            "Furcsa változás (törlés / szűrés / oldalváltozás lehet).\n\n"
             f"Korábbi max dátum: {prev.isoformat()}\n"
             f"Mostani max dátum: {latest.isoformat()}\n"
-            f"Utolsó nem üres oldal: {last_nonempty}\n"
+            f"Utolsó nem üres oldal: {last_page}\n"
         )
     else:
         subject = "Katona jegymester – nincs változás"
         body = (
             "Nincs változás.\n\n"
             f"Max dátum továbbra is: {latest.isoformat()}\n"
-            f"Utolsó nem üres oldal: {last_nonempty}\n"
+            f"Utolsó nem üres oldal: {last_page}\n"
         )
 
     send_email(subject, body)
     print("Email sent.")
+
 
 if __name__ == "__main__":
     main()
