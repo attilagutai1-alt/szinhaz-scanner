@@ -1,45 +1,41 @@
-name: Katona last-date checker
+name: Katona last date email
 
 on:
   schedule:
-    # UTC times. We run twice; script only sends when it is 08:00 in Budapest.
-    - cron: "0 7 * * *"
+    - cron: "0 6 * * *"   # summer (Budapest 08:00 when UTC+2)
+    - cron: "0 7 * * *"   # winter (Budapest 08:00 when UTC+1)
   workflow_dispatch:
 
 jobs:
   run:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Restore state cache
-        uses: actions/cache@v4
-        with:
-          path: state.json
-          key: katona-state-v1
 
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: Install deps
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          python -m playwright install --with-deps chromium
 
-      - name: Run checker
+      - name: Run script
         env:
           SMTP_USER: ${{ secrets.SMTP_USER }}
           SMTP_PASS: ${{ secrets.SMTP_PASS }}
-          TO_EMAILS:  ${{ secrets.TO_EMAILS }}
+          TO_EMAILS: ${{ secrets.TO_EMAILS }}
         run: |
           python katona_last_date.py
 
-      - name: Save state cache
-        uses: actions/cache@v4
-        with:
-          path: state.json
-          key: katona-state-v1
+      - name: Commit state.json
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add state.json || true
+          git commit -m "Update state" || true
+          git push || true
