@@ -25,12 +25,6 @@ def budapest_now():
     return datetime.now(tz=ZoneInfo("Europe/Budapest"))
 
 
-def should_send_now() -> bool:
-    """Only send at 08:00 Budapest time. (We run workflow at 06:00 and 07:00 UTC.)"""
-    now = budapest_now()
-    return now.hour == 8
-
-
 def fetch_page(active_page: int) -> str:
     params = {
         "activePage": str(active_page),
@@ -168,11 +162,7 @@ def send_email(subject: str, body: str):
 
 
 def main():
-    # only send at 08:00 Budapest time
-    if not should_send_now():
-        print("Not 08:00 in Budapest, exiting without sending.")
-        return
-
+    
     latest, last_page = find_latest_event_date(max_pages=50)
     if latest is None:
         subject = "Katona jegymester – hiba (nem találtam dátumot)"
@@ -230,3 +220,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
