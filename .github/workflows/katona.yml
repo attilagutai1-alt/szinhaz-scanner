@@ -4,11 +4,12 @@ on:
   schedule:
     - cron: "0 6 * * *"   # summer (Budapest 08:00 when UTC+2)
     - cron: "0 7 * * *"   # winter (Budapest 08:00 when UTC+1)
-  workflow_dispatch:
+  workflow_dispatch:       # Manual trigger
 
 jobs:
   run:
     runs-on: ubuntu-latest
+    
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -32,10 +33,29 @@ jobs:
         run: |
           python katona_last_date.py
 
+      - name: Upload debug screenshot (if exists)
+        if: always()  # Mindig futtasd, még hiba esetén is
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-screenshots
+          path: |
+            debug_page1.png
+            test_screenshot.png
+          if-no-files-found: ignore
+
       - name: Commit state.json
+        if: success()  # Csak sikeres futás után
         run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
           git add state.json || true
-          git commit -m "Update state" || true
+          git diff --staged --quiet || git commit -m "Update state [skip ci]"
           git push || true
+
+      - name: Save state as artifact (backup)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: state-backup
+          path: state.json
+          if-no-files-found: ignore
