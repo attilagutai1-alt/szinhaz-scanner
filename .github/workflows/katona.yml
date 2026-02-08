@@ -2,7 +2,6 @@ name: Katona last date email
 
 on:
   schedule:
-    - cron: "0 6 * * *"   # summer (Budapest 08:00 when UTC+2)
     - cron: "0 7 * * *"   # winter (Budapest 08:00 when UTC+1)
   workflow_dispatch:       # Manual trigger
 
