@@ -1,14 +1,15 @@
-name: Katona last date email
+name: Színház scraper - napi ellenőrzés
 
 on:
   schedule:
-    - cron: "0 7 * * *"   # winter (Budapest 08:00 when UTC+1)
-  workflow_dispatch:       # Manual trigger
+    - cron: "0 6 * * *"   # nyár (Budapest 08:00, UTC+2)
+    - cron: "0 7 * * *"   # tél  (Budapest 08:00, UTC+1)
+  workflow_dispatch:       # Kézi indítás
 
 jobs:
   run:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -24,30 +25,41 @@ jobs:
           pip install -r requirements.txt
           python -m playwright install --with-deps chromium
 
-      - name: Run script
+      - name: Run Katona scraper
         env:
           SMTP_USER: ${{ secrets.SMTP_USER }}
           SMTP_PASS: ${{ secrets.SMTP_PASS }}
           TO_EMAILS: ${{ secrets.TO_EMAILS }}
         run: |
+          echo "=== KATONA SZÍNHÁZ ==="
           python katona_last_date.py
 
-      - name: Upload debug screenshot (if exists)
-        if: always()  # Mindig futtasd, még hiba esetén is
+      - name: Run Örkény scraper
+        env:
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          TO_EMAILS: ${{ secrets.TO_EMAILS }}
+        run: |
+          echo "=== ÖRKÉNY SZÍNHÁZ ==="
+          python orkeny_last_date.py
+
+      - name: Upload debug screenshots
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: debug-screenshots
           path: |
             debug_page1.png
-            test_screenshot.png
+            debug_orkeny_page.png
+            debug_orkeny_final.png
           if-no-files-found: ignore
 
-      - name: Commit state.json
-        if: success()  # Csak sikeres futás után
+      - name: Commit state files
+        if: success()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add state.json || true
+          git add state.json orkeny_state.json || true
           git diff --staged --quiet || git commit -m "Update state [skip ci]"
           git push || true
 
@@ -56,5 +68,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: state-backup
-          path: state.json
+          path: |
+            state.json
+            orkeny_state.json
           if-no-files-found: ignore
