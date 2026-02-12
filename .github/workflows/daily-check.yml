@@ -2,8 +2,7 @@ name: Színház scraper - napi ellenőrzés
 
 on:
   schedule:
-    - cron: "0 6 * * *"   # nyár (Budapest 08:00, UTC+2)
-    - cron: "0 7 * * *"   # tél  (Budapest 08:00, UTC+1)
+    - cron: "0 7 * * *"   # 07:00 UTC = Budapest 08:00 télen / 09:00 nyáron
   workflow_dispatch:       # Kézi indítás
 
 jobs:
@@ -25,32 +24,12 @@ jobs:
           pip install -r requirements.txt
           python -m playwright install --with-deps chromium
 
-      - name: Run Katona scraper
+      - name: Run scrapers
         env:
           SMTP_USER: ${{ secrets.SMTP_USER }}
           SMTP_PASS: ${{ secrets.SMTP_PASS }}
           TO_EMAILS: ${{ secrets.TO_EMAILS }}
-        run: |
-          echo "=== KATONA SZÍNHÁZ ==="
-          python katona_last_date.py
-
-      - name: Run Örkény scraper
-        env:
-          SMTP_USER: ${{ secrets.SMTP_USER }}
-          SMTP_PASS: ${{ secrets.SMTP_PASS }}
-          TO_EMAILS: ${{ secrets.TO_EMAILS }}
-        run: |
-          echo "=== ÖRKÉNY SZÍNHÁZ ==="
-          python orkeny_last_date.py
-
-      - name: Run Radnóti scraper
-        env:
-          SMTP_USER: ${{ secrets.SMTP_USER }}
-          SMTP_PASS: ${{ secrets.SMTP_PASS }}
-          TO_EMAILS: ${{ secrets.TO_EMAILS }}
-        run: |
-          echo "=== RADNÓTI SZÍNHÁZ ==="
-          python radnoti_last_date.py
+        run: python main.py
 
       - name: Upload debug screenshots
         if: always()
@@ -58,10 +37,7 @@ jobs:
         with:
           name: debug-screenshots
           path: |
-            debug_page1.png
-            debug_orkeny_page.png
-            debug_orkeny_final.png
-            debug_radnoti_page.png
+            debug_*.png
           if-no-files-found: ignore
 
       - name: Commit state files
@@ -72,14 +48,3 @@ jobs:
           git add state.json orkeny_state.json radnoti_state.json || true
           git diff --staged --quiet || git commit -m "Update state [skip ci]"
           git push || true
-
-      - name: Save state as artifact (backup)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: state-backup
-          path: |
-            state.json
-            orkeny_state.json
-            radnoti_state.json
-          if-no-files-found: ignore
