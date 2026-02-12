@@ -15,12 +15,14 @@ from zoneinfo import ZoneInfo
 import katona_last_date
 import orkeny_last_date
 import radnoti_last_date
+import pbest_last_date
 
 
 SCRAPERS = [
     katona_last_date,
     orkeny_last_date,
     radnoti_last_date,
+    pbest_last_date,
 ]
 
 STATUS_ICONS = {
@@ -115,6 +117,7 @@ def main():
     lines.append("Katona:  https://katona.jegymester.hu/main")
     lines.append("Örkény:  https://orkenyszinhaz.hu/jegyvasarlas/kereses/eloadas")
     lines.append("Radnóti: https://radnotiszinhaz.hu/musor/")
+    lines.append("PBEST:   https://pbest.hu/musor")
 
     body = "\n".join(lines)
 
