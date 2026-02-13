@@ -108,14 +108,41 @@ def extract_screenings_for_day(page, target_date: date) -> list[dict]:
     """
     screenings = []
 
-    # Minden film tile-t megkeresünk
-    # A struktúra: film tile -> title + schedule container(ok)
-    # A schedule gombokban benne van a mozi class
-    
     html = page.content()
 
-    # Keresünk film blokkokat: react-film-tile-title-item + utána react-purchase-content gombok
-    # Egyszerűbb megközelítés: kinyerjük az összes filmcímet és vetítés-gombot pozíció szerint
+    # DEBUG: HTML méret és kulcs-szelektorok keresése
+    print(f"      [DEBUG] HTML méret: {len(html)} karakter")
+    
+    title_count = len(re.findall(r'react-film-tile-title-item', html))
+    btn_count = len(re.findall(r'react-purchase-content', html))
+    cinema_count = len(re.findall(r'react-cinema-', html))
+    print(f"      [DEBUG] title-item: {title_count}, purchase-content: {btn_count}, react-cinema-: {cinema_count}")
+    
+    # Ha nincs találat, keressünk más mintákat
+    if title_count == 0:
+        # Keressünk bármilyen "film" vagy "title" classot
+        film_classes = re.findall(r'class="[^"]*(?:film|title|movie)[^"]*"', html, re.IGNORECASE)
+        print(f"      [DEBUG] Film/title/movie classes: {film_classes[:10]}")
+    
+    if btn_count == 0:
+        # Keressünk bármilyen időpontot (HH:MM)
+        times_in_html = re.findall(r'>(\d{1,2}:\d{2})<', html)
+        print(f"      [DEBUG] Időpontok a HTML-ben: {times_in_html[:10]}")
+    
+    # Mentsünk el egy HTML mintát az első napnál
+    if target_date.weekday() == 0:  # hétfő
+        sample_file = f"debug_cinema_html_sample.txt"
+        # A react block környékét mentjük
+        react_idx = html.find('block-artmozi-homepage-react-block')
+        if react_idx >= 0:
+            sample = html[react_idx:react_idx+5000]
+        else:
+            # Az oldal közepéből mentünk egy darabot
+            mid = len(html) // 2
+            sample = html[mid:mid+5000]
+        with open(sample_file, "w", encoding="utf-8") as f:
+            f.write(sample)
+        print(f"      [DEBUG] HTML minta mentve: {sample_file}")
 
     # Film címek pozíciói
     title_pattern = re.finditer(
@@ -133,7 +160,6 @@ def extract_screenings_for_day(page, target_date: date) -> list[dict]:
 
     # Minden gombot a legközelebbi (előtte lévő) filmcímhez rendelünk
     for btn_pos, cinema_slug, time_str in buttons_with_pos:
-        # A legközelebbi filmcím ami ELŐTTE van
         film_title = "?"
         for title_pos, title in reversed(titles_with_pos):
             if title_pos < btn_pos:
