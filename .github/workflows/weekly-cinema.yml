@@ -2,7 +2,7 @@ name: Heti mozi összefoglaló
 
 on:
   schedule:
-    # Vasárnap 10:00 UTC = 11:00 télen / 12:00 nyáron Budapest idő
+    # Vasárnap 10:00 UTC = 11:00 télen / 12:00 nyáron Budapest
     - cron: "0 10 * * 0"
   workflow_dispatch:
 
@@ -10,6 +10,8 @@ jobs:
   cinema-weekly:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout
@@ -31,15 +33,13 @@ jobs:
           SMTP_USER: ${{ secrets.SMTP_USER }}
           SMTP_PASS: ${{ secrets.SMTP_PASS }}
           TO_EMAILS: ${{ secrets.TO_EMAILS }}
+          PAGES_URL: ${{ vars.PAGES_URL }}
         run: python cinema_weekly.py
 
-      - name: Upload debug files
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: cinema-debug
-          path: |
-            debug_cinema_*.png
-            debug_cinema_*.txt
-          retention-days: 3
-          if-no-files-found: ignore
+      - name: Commit HTML to docs/
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/moziheti.html
+          git diff --cached --quiet || git commit -m "🎬 Mozihét frissítve: $(date -u +%Y-%m-%d)"
+          git push
