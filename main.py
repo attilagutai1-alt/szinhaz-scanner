@@ -28,11 +28,12 @@ SCRAPERS = [
 ]
 
 STATUS_ICONS = {
-    "new_date":  "🟢",
-    "first_run": "🔵",
-    "decreased": "🔴",
-    "no_change": "⚪",
-    "error":     "❌",
+    "new_date":      "🟢",
+    "count_changed": "🔵",
+    "first_run":     "🔵",
+    "decreased":     "🔴",
+    "no_change":     "⚪",
+    "error":         "❌",
 }
 
 
@@ -90,12 +91,15 @@ def main():
 
     # Van-e bármilyen változás?
     has_new = any(r["status"] == "new_date" for r in results)
+    has_count = any(r["status"] == "count_changed" for r in results)
     has_error = any(r["status"] == "error" for r in results)
     has_decreased = any(r["status"] == "decreased" for r in results)
 
     # Email tárgy
     if has_new:
         subject = "🎭 Színház – ÚJ dátum!"
+    elif has_count:
+        subject = "🎭 Színház – dátumszám változott"
     elif has_error:
         subject = "🎭 Színház – hiba történt"
     elif has_decreased:
@@ -112,7 +116,9 @@ def main():
     for r in results:
         icon = STATUS_ICONS.get(r["status"], "❓")
         lines.append(f"{icon} {r['name']}")
-        lines.append(f"   {r['detail']}")
+        # A detail lehet többsoros (új előadások listája)
+        for detail_line in r['detail'].split('\n'):
+            lines.append(f"   {detail_line}")
         lines.append("")
 
     lines.append("-" * 45)
@@ -132,7 +138,8 @@ def main():
     print(f"{'#'*60}")
     for r in results:
         icon = STATUS_ICONS.get(r["status"], "❓")
-        print(f"  {icon} {r['name']}: {r['detail']}")
+        detail_first_line = r['detail'].split('\n')[0]
+        print(f"  {icon} {r['name']}: {detail_first_line}")
 
 
 if __name__ == "__main__":

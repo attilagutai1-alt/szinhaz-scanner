@@ -1,10 +1,10 @@
 """
 Vígszínház – scraper modul.
 
-A https://vigszinhaz.hu/hu/musor oldalról scrape-eli az előadások
-dátumait. Az oldal havi bontásban mutatja a műsort, a következő hónapra
-a navigációs nyíllal lehet lépni. A dátumok a produkciós URL-ekből
-nyerhetők ki (YYYYMMDD-HHMM formátum).
+A https://vigszinhaz.hu/hu/musor oldalról scrape-eli az előadások dátumait és neveit.
+Next.js szerver-renderelt oldal, havi megjelenítéssel.
+A dátumok és címek a produkciós URL-ekből nyerhetők ki:
+  /hu/produkciok/DARABNEV/YYYYMMDD-HHMM
 """
 
 import os
@@ -14,6 +14,7 @@ from datetime import datetime, date
 from zoneinfo import ZoneInfo
 
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
+from scraper_utils import compare_events
 
 
 URL = "https://vigszinhaz.hu/hu/musor"
@@ -21,7 +22,7 @@ STATE_FILE = "vig_state.json"
 
 HU_MONTHS = {
     "január": 1, "február": 2, "március": 3, "április": 4, "május": 5, "június": 6,
-    "július": 7, "augusztus": 8, "szeptember": 9, "október": 10, "november": 11, "december": 12,
+    "július": 7, "augusztus": 8, "szeptember": 9, "október": 10, "november": 11, "december": 12
 }
 
 
@@ -29,54 +30,50 @@ def budapest_now():
     return datetime.now(tz=ZoneInfo("Europe/Budapest"))
 
 
-def extract_dates_from_html(html: str) -> list[date]:
+def extract_events_from_html(html: str) -> list[tuple[date, str]]:
     """
-    Dátumok kinyerése a HTML-ből, elsősorban a produkciós URL-ekből.
-    Formátum: /hu/produkciok/DARABNEV/YYYYMMDD-HHMM
+    (dátum, előadásnév) párok kinyerése a HTML-ből.
+    URL formátum: /hu/produkciok/SHOW_NAME/YYYYMMDD-HHMM
     """
-    dates = []
+    events = []
 
-    # 1) Produkciós URL-ek: /hu/produkciok/xyz/20260213-1900
-    for m in re.finditer(r"/hu/produkciok/[^/]+/(20\d{2})(\d{2})(\d{2})-\d{4}", html):
-        y, mo, d = int(m.group(1)), int(m.group(2)), int(m.group(3))
+    # 1) Keresünk <a> tageket produkciós URL-lel ÉS link szöveggel
+    for m in re.finditer(
+        r'<a[^>]*href="[^"]*?/hu/produkciok/([^/]+)/(20\d{2})(\d{2})(\d{2})-\d{4}[^"]*"[^>]*>([^<]+)</a>',
+        html, re.IGNORECASE
+    ):
+        slug = m.group(1)
+        y, mo, d = int(m.group(2)), int(m.group(3)), int(m.group(4))
+        link_text = m.group(5).strip()
+        title = link_text if link_text else slug.replace("_", " ").replace("-", " ").title()
         try:
-            dates.append(date(y, mo, d))
+            events.append((date(y, mo, d), title))
         except ValueError:
             pass
 
-    return sorted(set(dates))
-
-
-def extract_dates_from_text(text: str) -> list[date]:
-    """
-    Fallback: dátumok kinyerése a szövegből.
-    Formátum: "2026. február 13.péntek 19:00"
-    """
-    dates = []
-
-    for m in re.finditer(
-        r"(20\d{2})\.\s*(január|február|március|április|május|június|július|augusztus|szeptember|október|november|december)\s+(\d{1,2})\.",
-        text, re.IGNORECASE
-    ):
-        y = int(m.group(1))
-        mon_name = m.group(2).lower()
-        d = int(m.group(3))
-        mo = HU_MONTHS.get(mon_name)
-        if mo:
+    # 2) Fallback: ha nincs link szöveg, használjuk a slug-ot
+    if not events:
+        for m in re.finditer(
+            r'/hu/produkciok/([^/]+)/(20\d{2})(\d{2})(\d{2})-\d{4}',
+            html
+        ):
+            slug = m.group(1)
+            y, mo, d = int(m.group(2)), int(m.group(3)), int(m.group(4))
+            title = slug.replace("_", " ").replace("-", " ").title()
             try:
-                dates.append(date(y, mo, d))
+                events.append((date(y, mo, d), title))
             except ValueError:
                 pass
 
-    return sorted(set(dates))
+    return events
 
 
-def scrape_all_months(page, max_months: int = 12) -> list[date]:
+def scrape_all_months(page, max_months: int = 12) -> list[tuple[date, str]]:
     """
-    Betölti az aktuális hónapot, kinyeri a dátumokat, majd a következő
-    hónap gombra kattintva továbblép. Addig megy, amíg van előadás.
+    Betölti az aktuális hónapot, kinyeri az előadásokat, majd a következő
+    hónap gombra kattintva továbblép.
     """
-    all_dates = []
+    all_events = []
     empty_streak = 0
 
     print(f"[VÍG] Oldal betöltése: {URL}")
@@ -89,27 +86,23 @@ def scrape_all_months(page, max_months: int = 12) -> list[date]:
         pass
 
     for month_idx in range(max_months):
-        # Dátumok kinyerése
         html = page.content()
-        text = page.inner_text("body")
+        month_events = extract_events_from_html(html)
 
-        month_dates = extract_dates_from_html(html)
-        if not month_dates:
-            month_dates = extract_dates_from_text(text)
-
-        if month_dates:
-            print(f"[VÍG] Hónap {month_idx}: {len(month_dates)} dátum, {min(month_dates)} - {max(month_dates)}")
-            all_dates.extend(month_dates)
+        if month_events:
+            month_dates = [d for d, _ in month_events]
+            print(f"[VÍG] Hónap {month_idx}: {len(month_events)} előadás, {min(month_dates)} - {max(month_dates)}")
+            all_events.extend(month_events)
             empty_streak = 0
         else:
-            print(f"[VÍG] Hónap {month_idx}: nincs dátum")
+            print(f"[VÍG] Hónap {month_idx}: nincs előadás")
             empty_streak += 1
 
         if empty_streak >= 2:
             print(f"[VÍG] 2 üres hónap, befejezem")
             break
 
-        # Következő hónap – keressük a jobbra nyilat / "next" gombot
+        # Következő hónap
         next_clicked = False
         for selector in [
             "a[href*='offset=1']",
@@ -119,8 +112,7 @@ def scrape_all_months(page, max_months: int = 12) -> list[date]:
             "[class*='next']",
             "[class*='forward']",
             "svg[class*='right'] >> xpath=..",
-            # A Vígszínház oldalon valószínűleg van egy jobbra nyíl
-            "button >> nth=-1",  # utolsó gomb a navigációban
+            "button >> nth=-1",
         ]:
             try:
                 btn = page.locator(selector).first
@@ -133,17 +125,14 @@ def scrape_all_months(page, max_months: int = 12) -> list[date]:
                 continue
 
         if not next_clicked:
-            # Próbáljunk egyedi megközelítést: keressünk jobbra nyilat a hónap címnél
             try:
-                # A Vígszínház oldalon a hónap navigáció általában nyilakkal működik
                 arrows = page.locator("button, a").all()
                 for arrow in arrows:
                     try:
                         text_content = arrow.inner_text(timeout=500)
-                        # Üres gomb vagy ">" karakter - valószínűleg nyíl
                         if text_content.strip() in ["›", "»", ">", "→", ""]:
                             bbox = arrow.bounding_box()
-                            if bbox and bbox.get("x", 0) > 500:  # jobb oldalon van
+                            if bbox and bbox.get("x", 0) > 500:
                                 arrow.click()
                                 next_clicked = True
                                 page.wait_for_timeout(3000)
@@ -157,7 +146,7 @@ def scrape_all_months(page, max_months: int = 12) -> list[date]:
             print(f"[VÍG] Nem találtam következő hónap gombot")
             break
 
-    return sorted(set(all_dates))
+    return all_events
 
 
 def check() -> dict:
@@ -175,18 +164,18 @@ def check() -> dict:
                 user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
             )
             page = context.new_page()
-            all_dates = scrape_all_months(page)
+            all_events = scrape_all_months(page)
             browser.close()
 
-        if not all_dates:
-            result["detail"] = "Nem találtam dátumot az oldalon."
+        if not all_events:
+            result["detail"] = "Nem találtam előadást az oldalon."
             return result
 
-        latest = max(all_dates)
-        event_count = len(all_dates)
-        print(f"[VÍG] {event_count} egyedi dátum, max: {latest}")
+        unique_events = sorted(set((d.isoformat(), t) for d, t in all_events))
+        latest = max(d for d, _ in all_events)
+        event_count = len(unique_events)
+        print(f"[VÍG] {event_count} előadás, max: {latest}")
 
-        # State
         state = {}
         if os.path.exists(STATE_FILE):
             with open(STATE_FILE, "r", encoding="utf-8") as f:
@@ -194,28 +183,22 @@ def check() -> dict:
 
         prev_str = state.get("latest_date")
         prev = datetime.strptime(prev_str, "%Y-%m-%d").date() if prev_str else None
+        prev_count = state.get("event_count")
+        prev_events = state.get("events", [])
 
         state["latest_date"] = latest.isoformat()
         state["event_count"] = event_count
+        state["events"] = [list(e) for e in unique_events]
         state["checked_at_budapest"] = budapest_now().isoformat()
         with open(STATE_FILE, "w", encoding="utf-8") as f:
             json.dump(state, f, ensure_ascii=False, indent=2)
 
         result["latest"] = latest
         result["prev"] = prev
-
-        if prev is None:
-            result["status"] = "first_run"
-            result["detail"] = f"Első futás. Max dátum: {latest} ({event_count} dátum)"
-        elif latest > prev:
-            result["status"] = "new_date"
-            result["detail"] = f"ÚJ! {prev} → {latest} ({event_count} dátum)"
-        elif latest < prev:
-            result["status"] = "decreased"
-            result["detail"] = f"Csökkent! {prev} → {latest} ({event_count} dátum)"
-        else:
-            result["status"] = "no_change"
-            result["detail"] = f"Nincs változás. Max: {latest} ({event_count} dátum)"
+        result["status"], result["detail"] = compare_events(
+            latest, event_count, prev, prev_count,
+            [list(e) for e in unique_events], prev_events
+        )
 
         print(f"[VÍG] {result['detail']}")
         return result

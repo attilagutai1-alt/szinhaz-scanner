@@ -2,7 +2,7 @@
 Katona József Színház – scraper modul.
 
 A katona.jegymester.hu oldalról bináris kereséssel megkeresi
-az utolsó oldalt ahol van esemény, majd kinyeri a legkésőbbi dátumot.
+az utolsó oldalt ahol van esemény, majd kinyeri a dátumot és az előadás nevét.
 """
 
 import os
@@ -12,6 +12,7 @@ from datetime import datetime, date
 from zoneinfo import ZoneInfo
 
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
+from scraper_utils import compare_events
 
 
 BASE_URL = "https://katona.jegymester.hu/main"
@@ -42,8 +43,6 @@ def page_is_empty(page) -> bool:
 
 def extract_dates_from_text(text: str) -> list[date]:
     dates = []
-
-    # 2026. január 30.
     for m in re.finditer(
         r"\b(20\d{2})\.\s*(január|február|március|április|május|június|július|augusztus|szeptember|október|november|december)\s+(\d{1,2})\.",
         text, re.IGNORECASE
@@ -56,7 +55,6 @@ def extract_dates_from_text(text: str) -> list[date]:
             except ValueError:
                 pass
 
-    # január 30, csütörtök / január 30.
     for m in re.finditer(
         r"\b(január|február|március|április|május|június|július|augusztus|szeptember|október|november|december)\s+(\d{1,2})[.,]",
         text, re.IGNORECASE
@@ -71,7 +69,6 @@ def extract_dates_from_text(text: str) -> list[date]:
             except ValueError:
                 pass
 
-    # 2026.01.30 / 2026-01-30
     for m in re.finditer(r"\b(20\d{2})[.\-](0[1-9]|1[0-2])[.\-](0[1-9]|[12]\d|3[01])\b", text):
         y, mo, d = int(m.group(1)), int(m.group(2)), int(m.group(3))
         try:
@@ -80,6 +77,87 @@ def extract_dates_from_text(text: str) -> list[date]:
             pass
 
     return sorted(set(dates))
+
+
+def extract_events_from_page(page) -> list[tuple[date, str]]:
+    """
+    Megpróbálja a jegymester oldalról az egyes eseményeket kinyerni
+    (dátum + előadásnév). Több szelektor-stratégiát is kipróbál.
+    """
+    events = []
+
+    # Stratégia 1: Keresünk event card elemeket
+    for selector in [
+        ".event-card", ".card", "[class*='event-item']",
+        "[class*='event-card']", ".list-group-item", "article",
+        "[class*='ticket']", ".row[class*='event']"
+    ]:
+        try:
+            items = page.locator(selector).all()
+            if len(items) < 2:
+                continue
+
+            found_any = False
+            for item in items:
+                try:
+                    text = item.inner_text(timeout=2000)
+                    dates = extract_dates_from_text(text)
+                    if not dates:
+                        continue
+
+                    title = "?"
+                    for title_sel in ["h3", "h4", "h5", "h2", "a[href*='event']", ".title", "[class*='title']", "[class*='name']"]:
+                        try:
+                            title_el = item.locator(title_sel).first
+                            t = title_el.inner_text(timeout=500).strip()
+                            if t and len(t) > 2 and not re.match(r'^[\d.]+$', t):
+                                title = t
+                                break
+                        except Exception:
+                            continue
+
+                    if title == "?":
+                        lines = [l.strip() for l in text.split("\n") if l.strip() and len(l.strip()) > 2]
+                        for line in lines:
+                            if not re.search(r'20\d{2}[.\-]|január|február|március|április|május|június|július|augusztus|szeptember|október|november|december|\d{1,2}:\d{2}|Ft|jegy|vásárl', line, re.IGNORECASE):
+                                title = line
+                                break
+
+                    for d in dates:
+                        events.append((d, title))
+                    found_any = True
+                except Exception:
+                    continue
+
+            if found_any:
+                break
+        except Exception:
+            continue
+
+    # Stratégia 2: Szöveg alapú – cím sor a dátum előtt
+    if not events:
+        text = page.inner_text("body")
+        lines = text.split("\n")
+        for i, line in enumerate(lines):
+            dates = extract_dates_from_text(line)
+            if dates:
+                # A cím valószínűleg az előző nem-üres sor
+                title = "?"
+                for j in range(i - 1, max(i - 5, -1), -1):
+                    prev_line = lines[j].strip()
+                    if prev_line and len(prev_line) > 2 and not re.search(r'20\d{2}[.\-]|\d{1,2}:\d{2}|Ft', prev_line):
+                        title = prev_line
+                        break
+                for d in dates:
+                    events.append((d, title))
+
+    # Stratégia 3: Végső fallback – csak dátumok
+    if not events:
+        text = page.inner_text("body")
+        for d in extract_dates_from_text(text):
+            events.append((d, "?"))
+
+    return events
 
 
 def find_last_nonempty_page(page, max_pages=60) -> int:
@@ -110,26 +188,21 @@ def find_last_nonempty_page(page, max_pages=60) -> int:
     return lo
 
 
-def scrape_latest_date(page, last_page: int) -> date | None:
-    all_dates = []
+def scrape_all_events(page, last_page: int) -> list[tuple[date, str]]:
+    all_events = []
     for p in range(1, last_page + 1):
         print(f"[KATONA] Scraping oldal {p}/{last_page}...")
         page.goto(build_url(p), wait_until="networkidle", timeout=60000)
         page.wait_for_timeout(1500)
         if page_is_empty(page):
             continue
-        text = page.inner_text("body")
-        dates = extract_dates_from_text(text)
-        all_dates.extend(dates)
+        page_events = extract_events_from_page(page)
+        all_events.extend(page_events)
 
-    return max(all_dates) if all_dates else None
+    return all_events
 
 
 def check() -> dict:
-    """
-    Futtatja a Katona scrapelést.
-    Visszaad egy dict-et: {"name", "latest", "prev", "status", "detail"}
-    """
     name = "Katona József Színház"
     print(f"\n{'='*50}")
     print(f"[KATONA] Scraper indítása: {budapest_now()}")
@@ -151,14 +224,17 @@ def check() -> dict:
                 browser.close()
                 return result
 
-            latest = scrape_latest_date(page, last_page)
+            all_events = scrape_all_events(page, last_page)
             browser.close()
 
-        if latest is None:
-            result["detail"] = f"Nem találtam dátumot. Utolsó nem üres oldal: {last_page}"
+        if not all_events:
+            result["detail"] = f"Nem találtam előadást. Utolsó nem üres oldal: {last_page}"
             return result
 
-        # State
+        unique_events = sorted(set((d.isoformat(), t) for d, t in all_events))
+        latest = max(d for d, _ in all_events)
+        event_count = len(unique_events)
+
         state = {}
         if os.path.exists(STATE_FILE):
             with open(STATE_FILE, "r", encoding="utf-8") as f:
@@ -166,8 +242,12 @@ def check() -> dict:
 
         prev_str = state.get("latest_date")
         prev = datetime.strptime(prev_str, "%Y-%m-%d").date() if prev_str else None
+        prev_count = state.get("event_count")
+        prev_events = state.get("events", [])
 
         state["latest_date"] = latest.isoformat()
+        state["event_count"] = event_count
+        state["events"] = [list(e) for e in unique_events]
         state["last_page"] = last_page
         state["checked_at_budapest"] = budapest_now().isoformat()
         with open(STATE_FILE, "w", encoding="utf-8") as f:
@@ -175,19 +255,10 @@ def check() -> dict:
 
         result["latest"] = latest
         result["prev"] = prev
-
-        if prev is None:
-            result["status"] = "first_run"
-            result["detail"] = f"Első futás. Max dátum: {latest}"
-        elif latest > prev:
-            result["status"] = "new_date"
-            result["detail"] = f"ÚJ! {prev} → {latest}"
-        elif latest < prev:
-            result["status"] = "decreased"
-            result["detail"] = f"Csökkent! {prev} → {latest}"
-        else:
-            result["status"] = "no_change"
-            result["detail"] = f"Nincs változás. Max: {latest}"
+        result["status"], result["detail"] = compare_events(
+            latest, event_count, prev, prev_count,
+            [list(e) for e in unique_events], prev_events
+        )
 
         print(f"[KATONA] {result['detail']}")
         return result

@@ -2,7 +2,7 @@
 Radnóti Színház – scraper modul.
 
 A radnotiszinhaz.hu/musor/ oldalról havi bontásban (?offset=0,1,2,...)
-scrape-eli a dátumokat, amíg üres hónapot nem talál.
+scrape-eli a dátumokat és az előadásneveket.
 """
 
 import os
@@ -12,10 +12,13 @@ from datetime import datetime, date
 from zoneinfo import ZoneInfo
 
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
+from scraper_utils import compare_events
 
 
 BASE_URL = "https://radnotiszinhaz.hu/musor/"
 STATE_FILE = "radnoti_state.json"
+
+WEEKDAYS = r"(?:hétfő|kedd|szerda|csütörtök|péntek|szombat|vasárnap)"
 
 
 def budapest_now():
@@ -29,25 +32,65 @@ def extract_month_info(text: str) -> tuple[int, int] | None:
     return None
 
 
-def extract_dates_for_month(text: str, year: int, month: int) -> list[date]:
-    dates = []
-    day_pattern = re.finditer(
-        r"\b(\d{1,2})\.\s*\n\s*(?:hétfő|kedd|szerda|csütörtök|péntek|szombat|vasárnap)",
+def extract_events_for_month(text: str, year: int, month: int) -> list[tuple[date, str]]:
+    """
+    A Radnóti havi nézetéből kinyeri a (dátum, előadásnév) párokat.
+    Szöveg mintája:
+        13.
+        csütörtök
+        19:00
+        Előadás neve
+    Egy napon belül több előadás is lehet (pl. 11:00 és 19:00).
+    """
+    events = []
+
+    # Keresünk napszám + napnév + idő + cím mintákat
+    # Megkeressük az összes "NAP.\nNAPNÉV" pozíciót
+    day_positions = list(re.finditer(
+        r"\b(\d{1,2})\.\s*\n\s*" + WEEKDAYS,
         text, re.IGNORECASE
-    )
-    seen_days = set()
-    for match in day_pattern:
-        d = int(match.group(1))
-        if 1 <= d <= 31 and d not in seen_days:
-            seen_days.add(d)
-            try:
-                dates.append(date(year, month, d))
-            except ValueError:
-                pass
-    return sorted(dates)
+    ))
+
+    for i, day_match in enumerate(day_positions):
+        d = int(day_match.group(1))
+        if not (1 <= d <= 31):
+            continue
+
+        try:
+            event_date = date(year, month, d)
+        except ValueError:
+            continue
+
+        # A nap blokk vége: a következő napszám pozíciója, vagy a szöveg vége
+        block_end = day_positions[i + 1].start() if i + 1 < len(day_positions) else len(text)
+        block = text[day_match.start():block_end]
+
+        # Keresünk "HH:MM\nElőadás neve" mintákat a blokkban
+        time_matches = list(re.finditer(
+            r'(\d{1,2}:\d{2})\s*\n\s*([^\n]+)',
+            block
+        ))
+
+        if time_matches:
+            for tm in time_matches:
+                title = tm.group(2).strip()
+                # Szűrjük ki a nem-cím sorokat (pl. "Jegy", "Információ", stb.)
+                if title and len(title) > 2 and not re.match(r'^[\d.:]+$', title):
+                    events.append((event_date, title))
+        else:
+            # Ha nincs idő minta, próbáljuk az első nem-üres sort a napnév után
+            lines = block.split("\n")
+            for line in lines[2:]:  # átugorjuk a napszám + napnév sort
+                line = line.strip()
+                if line and len(line) > 2 and not re.match(r'^[\d.:]+$', line) and not re.match(WEEKDAYS, line, re.IGNORECASE):
+                    events.append((event_date, line))
+                    break
+
+    return events
 
 
 def extract_dates_from_range(text: str) -> list[date]:
+    """Fallback: teljes dátumok keresése."""
     dates = []
     for m in re.finditer(r"\b(20\d{2})\.(0[1-9]|1[0-2])\.(0[1-9]|[12]\d|3[01])\.", text):
         y, mo, d = int(m.group(1)), int(m.group(2)), int(m.group(3))
@@ -58,8 +101,8 @@ def extract_dates_from_range(text: str) -> list[date]:
     return sorted(set(dates))
 
 
-def scrape_all_months(page, max_months_ahead: int = 12) -> list[date]:
-    all_dates = []
+def scrape_all_months(page, max_months_ahead: int = 12) -> list[tuple[date, str]]:
+    all_events = []
     empty_streak = 0
 
     for offset in range(max_months_ahead):
@@ -89,21 +132,28 @@ def scrape_all_months(page, max_months_ahead: int = 12) -> list[date]:
             year, month = month_info
             print(f"[RADNÓTI] Hónap: {year}.{month:02d}")
 
-            month_dates = extract_dates_for_month(text, year, month)
-            if not month_dates:
-                month_dates = extract_dates_from_range(text)
+            month_events = extract_events_for_month(text, year, month)
 
-            if month_dates:
-                print(f"[RADNÓTI] {len(month_dates)} dátum: {min(month_dates)} - {max(month_dates)}")
-                all_dates.extend(month_dates)
+            if month_events:
+                month_dates = [d for d, _ in month_events]
+                print(f"[RADNÓTI] {len(month_events)} előadás, {min(month_dates)} - {max(month_dates)}")
+                all_events.extend(month_events)
                 empty_streak = 0
             else:
-                print(f"[RADNÓTI] Nincs esemény")
-                empty_streak += 1
+                # Fallback: csak dátumok
+                fallback_dates = extract_dates_from_range(text)
+                if fallback_dates:
+                    for d in fallback_dates:
+                        all_events.append((d, "?"))
+                    empty_streak = 0
+                else:
+                    print(f"[RADNÓTI] Nincs esemény")
+                    empty_streak += 1
         else:
             fallback_dates = extract_dates_from_range(text)
             if fallback_dates:
-                all_dates.extend(fallback_dates)
+                for d in fallback_dates:
+                    all_events.append((d, "?"))
                 empty_streak = 0
             else:
                 empty_streak += 1
@@ -112,7 +162,7 @@ def scrape_all_months(page, max_months_ahead: int = 12) -> list[date]:
             print(f"[RADNÓTI] 2 üres hónap egymás után, befejezem")
             break
 
-    return sorted(set(all_dates))
+    return all_events
 
 
 def check() -> dict:
@@ -130,16 +180,17 @@ def check() -> dict:
                 user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
             )
             page = context.new_page()
-            all_dates = scrape_all_months(page)
+            all_events = scrape_all_months(page)
             browser.close()
 
-        if not all_dates:
-            result["detail"] = "Nem találtam dátumot az oldalon."
+        if not all_events:
+            result["detail"] = "Nem találtam előadást az oldalon."
             return result
 
-        latest = max(all_dates)
-        event_count = len(all_dates)
-        print(f"[RADNÓTI] {event_count} egyedi dátum, max: {latest}")
+        unique_events = sorted(set((d.isoformat(), t) for d, t in all_events))
+        latest = max(d for d, _ in all_events)
+        event_count = len(unique_events)
+        print(f"[RADNÓTI] {event_count} előadás, max: {latest}")
 
         state = {}
         if os.path.exists(STATE_FILE):
@@ -148,28 +199,22 @@ def check() -> dict:
 
         prev_str = state.get("latest_date")
         prev = datetime.strptime(prev_str, "%Y-%m-%d").date() if prev_str else None
+        prev_count = state.get("event_count")
+        prev_events = state.get("events", [])
 
         state["latest_date"] = latest.isoformat()
         state["event_count"] = event_count
+        state["events"] = [list(e) for e in unique_events]
         state["checked_at_budapest"] = budapest_now().isoformat()
         with open(STATE_FILE, "w", encoding="utf-8") as f:
             json.dump(state, f, ensure_ascii=False, indent=2)
 
         result["latest"] = latest
         result["prev"] = prev
-
-        if prev is None:
-            result["status"] = "first_run"
-            result["detail"] = f"Első futás. Max dátum: {latest} ({event_count} dátum)"
-        elif latest > prev:
-            result["status"] = "new_date"
-            result["detail"] = f"ÚJ! {prev} → {latest} ({event_count} dátum)"
-        elif latest < prev:
-            result["status"] = "decreased"
-            result["detail"] = f"Csökkent! {prev} → {latest} ({event_count} dátum)"
-        else:
-            result["status"] = "no_change"
-            result["detail"] = f"Nincs változás. Max: {latest} ({event_count} dátum)"
+        result["status"], result["detail"] = compare_events(
+            latest, event_count, prev, prev_count,
+            [list(e) for e in unique_events], prev_events
+        )
 
         print(f"[RADNÓTI] {result['detail']}")
         return result

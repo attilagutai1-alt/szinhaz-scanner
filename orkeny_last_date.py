@@ -3,7 +3,7 @@
 
 Az orkenyszinhaz.hu/jegyvasarlas/kereses/eloadas oldalról
 a "Továbbiak betöltése" gombot kattintgatva betölti az összes
-előadást, majd kinyeri a legkésőbbi dátumot.
+előadást, majd kinyeri a dátumot és a címet.
 """
 
 import os
@@ -13,6 +13,7 @@ from datetime import datetime, date
 from zoneinfo import ZoneInfo
 
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
+from scraper_utils import compare_events
 
 
 URL = "https://orkenyszinhaz.hu/jegyvasarlas/kereses/eloadas"
@@ -40,7 +41,72 @@ def extract_dates_from_text(text: str) -> list[date]:
     return sorted(set(dates))
 
 
-def load_all_events(page, max_clicks: int = 50) -> str:
+def extract_events_from_page(page) -> list[tuple[date, str]]:
+    """
+    Megpróbálja az egyes előadás-bejegyzéseket külön-külön kinyerni,
+    hogy a címet is megkapjuk a dátum mellett.
+    """
+    events = []
+
+    # Stratégia 1: Playwright locatorokkal keresünk event elemeket
+    for selector in [
+        "article", ".event-item", ".search-result-item",
+        ".performance-item", "[class*='event']", "[class*='result']",
+        ".card", "li"
+    ]:
+        try:
+            items = page.locator(selector).all()
+            if len(items) < 2:
+                continue
+
+            found_any = False
+            for item in items:
+                try:
+                    text = item.inner_text(timeout=2000)
+                    dates = extract_dates_from_text(text)
+                    if not dates:
+                        continue
+
+                    # Cím kinyerése: először heading/link, aztán első sor
+                    title = "?"
+                    for title_sel in ["h2", "h3", "h4", "a[href*='eloadas']", "a[href*='program']", ".title", "[class*='title']"]:
+                        try:
+                            title_el = item.locator(title_sel).first
+                            t = title_el.inner_text(timeout=500).strip()
+                            if t and len(t) > 2 and not re.match(r'^\d', t):
+                                title = t
+                                break
+                        except Exception:
+                            continue
+
+                    if title == "?":
+                        lines = [l.strip() for l in text.split("\n") if l.strip() and len(l.strip()) > 2]
+                        for line in lines:
+                            if not re.match(r'^[\d.|\s:]+$', line) and not re.search(r'20\d{2}\.', line):
+                                title = line
+                                break
+
+                    for d in dates:
+                        events.append((d, title))
+                    found_any = True
+                except Exception:
+                    continue
+
+            if found_any:
+                break
+        except Exception:
+            continue
+
+    # Stratégia 2: Fallback – csak dátumok, cím nélkül
+    if not events:
+        text = page.inner_text("body")
+        for d in extract_dates_from_text(text):
+            events.append((d, "?"))
+
+    return events
+
+
+def load_all_events(page, max_clicks: int = 50) -> list[tuple[date, str]]:
     print(f"[ÖRKÉNY] Oldal betöltése: {URL}")
     page.goto(URL, wait_until="networkidle", timeout=60000)
     page.wait_for_timeout(3000)
@@ -50,6 +116,7 @@ def load_all_events(page, max_clicks: int = 50) -> str:
     except Exception:
         pass
 
+    # "Továbbiak betöltése" gomb kattintgatása
     click_count = 0
     for i in range(max_clicks):
         load_more_btn = None
@@ -82,7 +149,9 @@ def load_all_events(page, max_clicks: int = 50) -> str:
             break
 
     print(f"[ÖRKÉNY] Összesen {click_count} 'Továbbiak betöltése' kattintás")
-    return page.inner_text("body")
+
+    # Események kinyerése
+    return extract_events_from_page(page)
 
 
 def check() -> dict:
@@ -100,18 +169,17 @@ def check() -> dict:
                 user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
             )
             page = context.new_page()
-            body_text = load_all_events(page)
+            all_events = load_all_events(page)
             browser.close()
 
-        all_dates = extract_dates_from_text(body_text)
-
-        if not all_dates:
-            result["detail"] = "Nem találtam dátumot az oldalon."
+        if not all_events:
+            result["detail"] = "Nem találtam előadást az oldalon."
             return result
 
-        latest = max(all_dates)
-        event_count = len(all_dates)
-        print(f"[ÖRKÉNY] {event_count} egyedi dátum, max: {latest}")
+        unique_events = sorted(set((d.isoformat(), t) for d, t in all_events))
+        latest = max(d for d, _ in all_events)
+        event_count = len(unique_events)
+        print(f"[ÖRKÉNY] {event_count} előadás, max: {latest}")
 
         state = {}
         if os.path.exists(STATE_FILE):
@@ -120,28 +188,22 @@ def check() -> dict:
 
         prev_str = state.get("latest_date")
         prev = datetime.strptime(prev_str, "%Y-%m-%d").date() if prev_str else None
+        prev_count = state.get("event_count")
+        prev_events = state.get("events", [])
 
         state["latest_date"] = latest.isoformat()
         state["event_count"] = event_count
+        state["events"] = [list(e) for e in unique_events]
         state["checked_at_budapest"] = budapest_now().isoformat()
         with open(STATE_FILE, "w", encoding="utf-8") as f:
             json.dump(state, f, ensure_ascii=False, indent=2)
 
         result["latest"] = latest
         result["prev"] = prev
-
-        if prev is None:
-            result["status"] = "first_run"
-            result["detail"] = f"Első futás. Max dátum: {latest} ({event_count} dátum)"
-        elif latest > prev:
-            result["status"] = "new_date"
-            result["detail"] = f"ÚJ! {prev} → {latest} ({event_count} dátum)"
-        elif latest < prev:
-            result["status"] = "decreased"
-            result["detail"] = f"Csökkent! {prev} → {latest} ({event_count} dátum)"
-        else:
-            result["status"] = "no_change"
-            result["detail"] = f"Nincs változás. Max: {latest} ({event_count} dátum)"
+        result["status"], result["detail"] = compare_events(
+            latest, event_count, prev, prev_count,
+            [list(e) for e in unique_events], prev_events
+        )
 
         print(f"[ÖRKÉNY] {result['detail']}")
         return result

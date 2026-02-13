@@ -1,9 +1,9 @@
 """
 Pintér Béla és Társulata – scraper modul.
 
-A https://pbest.hu/musor oldalról scrape-eli az összes előadás dátumát.
+A https://pbest.hu/musor oldalról scrape-eli az összes előadás dátumát és nevét.
 Az oldal szerver-renderelt, minden előadás egy oldalon van.
-A dátumok az event_rdate URL paraméterből nyerhetők ki (YYYYMMDDHHMMSS formátum).
+A dátumok az event_rdate URL paraméterből, a címek a linkek szövegéből nyerhetők ki.
 """
 
 import os
@@ -13,12 +13,12 @@ from datetime import datetime, date
 from zoneinfo import ZoneInfo
 
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
+from scraper_utils import compare_events
 
 
 URL = "https://pbest.hu/musor"
 STATE_FILE = "pbest_state.json"
 
-# Rövidített magyar hónapnevek a pbest.hu-n: Feb, Már, Ápr, stb.
 HU_SHORT_MONTHS = {
     "jan": 1, "feb": 2, "már": 3, "ápr": 4, "máj": 5, "jún": 6,
     "júl": 7, "aug": 8, "sze": 9, "okt": 10, "nov": 11, "dec": 12,
@@ -29,44 +29,37 @@ def budapest_now():
     return datetime.now(tz=ZoneInfo("Europe/Budapest"))
 
 
-def extract_dates_from_text(text: str) -> list[date]:
+def extract_events_from_html(html: str) -> list[tuple[date, str]]:
     """
-    Dátumok kinyerése többféle formátumból.
+    (dátum, előadásnév) párok kinyerése a HTML-ből.
+    PBEST link formátum: <a href="/musor/SHOW-NAME?event_rdate=YYYYMMDDHHMMSS">Title</a>
     """
-    dates = []
+    events = []
 
-    # 1) event_rdate URL paraméterből: 20260213190000
-    for m in re.finditer(r"event_rdate=(20\d{2})(\d{2})(\d{2})\d{6}", text):
-        y, mo, d = int(m.group(1)), int(m.group(2)), int(m.group(3))
+    # Keresünk linkeket event_rdate paraméterrel és a link szövegével
+    for m in re.finditer(
+        r'<a[^>]*href="[^"]*?/musor/([^"?]+)\?[^"]*event_rdate=(20\d{2})(\d{2})(\d{2})\d{6}[^"]*"[^>]*>([^<]+)</a>',
+        html, re.IGNORECASE
+    ):
+        slug = m.group(1)
+        y, mo, d = int(m.group(2)), int(m.group(3)), int(m.group(4))
+        link_text = m.group(5).strip()
+        title = link_text if link_text else slug.replace("-", " ").title()
         try:
-            dates.append(date(y, mo, d))
+            events.append((date(y, mo, d), title))
         except ValueError:
             pass
 
-    # 2) "2026. Feb 13." vagy "2026. Már 1." formátum
-    for m in re.finditer(
-        r"\b(20\d{2})\.\s*(Jan|Feb|Már|Ápr|Máj|Jún|Júl|Aug|Sze|Okt|Nov|Dec)\s+(\d{1,2})\.",
-        text, re.IGNORECASE
-    ):
-        y = int(m.group(1))
-        mon_name = m.group(2).lower()
-        d = int(m.group(3))
-        mo = HU_SHORT_MONTHS.get(mon_name)
-        if mo:
+    # Fallback: event_rdate nélkül is keresünk
+    if not events:
+        for m in re.finditer(r"event_rdate=(20\d{2})(\d{2})(\d{2})\d{6}", html):
+            y, mo, d = int(m.group(1)), int(m.group(2)), int(m.group(3))
             try:
-                dates.append(date(y, mo, d))
+                events.append((date(y, mo, d), "?"))
             except ValueError:
                 pass
 
-    # 3) Fallback: 2026.03.14 vagy 2026-03-14
-    for m in re.finditer(r"\b(20\d{2})[.\-](0[1-9]|1[0-2])[.\-](0[1-9]|[12]\d|3[01])\b", text):
-        y, mo, d = int(m.group(1)), int(m.group(2)), int(m.group(3))
-        try:
-            dates.append(date(y, mo, d))
-        except ValueError:
-            pass
-
-    return sorted(set(dates))
+    return events
 
 
 def check() -> dict:
@@ -94,23 +87,19 @@ def check() -> dict:
             except Exception:
                 pass
 
-            # Az oldal teljes HTML-je kell az event_rdate paraméterekhez
             html_content = page.content()
-            body_text = page.inner_text("body")
             browser.close()
 
-        # Dátumok kinyerése mind a HTML-ből, mind a szövegből
-        all_dates = extract_dates_from_text(html_content)
-        all_dates.extend(extract_dates_from_text(body_text))
-        all_dates = sorted(set(all_dates))
+        all_events = extract_events_from_html(html_content)
 
-        if not all_dates:
-            result["detail"] = "Nem találtam dátumot az oldalon."
+        if not all_events:
+            result["detail"] = "Nem találtam előadást az oldalon."
             return result
 
-        latest = max(all_dates)
-        event_count = len(all_dates)
-        print(f"[PBEST] {event_count} egyedi dátum, max: {latest}")
+        unique_events = sorted(set((d.isoformat(), t) for d, t in all_events))
+        latest = max(d for d, _ in all_events)
+        event_count = len(unique_events)
+        print(f"[PBEST] {event_count} előadás, max: {latest}")
 
         # State
         state = {}
@@ -120,28 +109,22 @@ def check() -> dict:
 
         prev_str = state.get("latest_date")
         prev = datetime.strptime(prev_str, "%Y-%m-%d").date() if prev_str else None
+        prev_count = state.get("event_count")
+        prev_events = state.get("events", [])
 
         state["latest_date"] = latest.isoformat()
         state["event_count"] = event_count
+        state["events"] = [list(e) for e in unique_events]
         state["checked_at_budapest"] = budapest_now().isoformat()
         with open(STATE_FILE, "w", encoding="utf-8") as f:
             json.dump(state, f, ensure_ascii=False, indent=2)
 
         result["latest"] = latest
         result["prev"] = prev
-
-        if prev is None:
-            result["status"] = "first_run"
-            result["detail"] = f"Első futás. Max dátum: {latest} ({event_count} dátum)"
-        elif latest > prev:
-            result["status"] = "new_date"
-            result["detail"] = f"ÚJ! {prev} → {latest} ({event_count} dátum)"
-        elif latest < prev:
-            result["status"] = "decreased"
-            result["detail"] = f"Csökkent! {prev} → {latest} ({event_count} dátum)"
-        else:
-            result["status"] = "no_change"
-            result["detail"] = f"Nincs változás. Max: {latest} ({event_count} dátum)"
+        result["status"], result["detail"] = compare_events(
+            latest, event_count, prev, prev_count,
+            [list(e) for e in unique_events], prev_events
+        )
 
         print(f"[PBEST] {result['detail']}")
         return result
