@@ -16,6 +16,7 @@ import katona_last_date
 import orkeny_last_date
 import radnoti_last_date
 import pbest_last_date
+import vig_last_date
 
 
 SCRAPERS = [
@@ -23,6 +24,7 @@ SCRAPERS = [
     orkeny_last_date,
     radnoti_last_date,
     pbest_last_date,
+    vig_last_date,
 ]
 
 STATUS_ICONS = {
@@ -118,6 +120,7 @@ def main():
     lines.append("Örkény:  https://orkenyszinhaz.hu/jegyvasarlas/kereses/eloadas")
     lines.append("Radnóti: https://radnotiszinhaz.hu/musor/")
     lines.append("PBEST:   https://pbest.hu/musor")
+    lines.append("Víg:     https://vigszinhaz.hu/hu/musor")
 
     body = "\n".join(lines)
 
