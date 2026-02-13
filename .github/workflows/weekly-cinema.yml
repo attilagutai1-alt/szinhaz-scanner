@@ -1,0 +1,43 @@
+name: Heti mozi összefoglaló
+
+on:
+  schedule:
+    # Vasárnap 10:00 UTC = 11:00 télen / 12:00 nyáron Budapest idő
+    - cron: "0 10 * * 0"
+  workflow_dispatch:
+
+jobs:
+  cinema-weekly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Python setup
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install playwright
+          playwright install chromium
+          playwright install-deps chromium
+
+      - name: Run cinema weekly scraper
+        env:
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          TO_EMAILS: ${{ secrets.TO_EMAILS }}
+        run: python cinema_weekly.py
+
+      - name: Upload debug screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cinema-debug-screenshots
+          path: debug_cinema_*.png
+          retention-days: 3
+          if-no-files-found: ignore
