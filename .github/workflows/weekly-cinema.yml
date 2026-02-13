@@ -33,11 +33,13 @@ jobs:
           TO_EMAILS: ${{ secrets.TO_EMAILS }}
         run: python cinema_weekly.py
 
-      - name: Upload debug screenshots
+      - name: Upload debug files
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: cinema-debug-screenshots
-          path: debug_cinema_*.png
+          name: cinema-debug
+          path: |
+            debug_cinema_*.png
+            debug_cinema_*.txt
           retention-days: 3
           if-no-files-found: ignore
