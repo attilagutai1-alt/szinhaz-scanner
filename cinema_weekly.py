@@ -6,17 +6,18 @@ A mozis hét csütörtök–szerda, ezért 2 mozis hétből kell összeollózni:
   - Aktuális mozis hét → hétfő, kedd, szerda
   - Következő mozis hét → csütörtök, péntek, szombat, vasárnap
 
-Mind a 4 mozi (Művész, Puskin, Toldi, Corvin) ugyanazt az artmozi.hu platformot
-használja (Drupal + React schedule block), azonos HTML struktúrával.
+Minden mozit a saját oldaláról scrape-elünk, mert az artmozi.hu-n
+a vetítési időknél nem látszik melyik mozi melyik időpont.
 
-React szelektorok:
-  Hétváltó:  div.react-week-filter-number  (szöveg: "07", "08" stb.)
-  Napváltó:  div.react-day-filter-box  (nem disabled)
-             .react-day-filter-title  (napnév / "Ma")
-             .react-day-filter-date   ("feb. 16")
-  Film cím:  span.react-film-tile-title-item
-  Vetítés:   button.react-purchase-content  (szöveg: "17:45")
-             class-ban benne: react-cinema-MOZISLUG (pl. react-cinema-toldi-mozi)
+React szelektorok (azonos mind a 4 oldalon):
+  Hétváltó:   div.react-week-filter-number  ("07", "08" stb.)
+  Napváltó:   div.react-day-filter-box  (nem disabled)
+              .react-day-filter-date   ("feb. 16")
+  Film tile:  div.react-film-tile-container
+              span.react-film-tile-title-item  (filmcím)
+              a.react-film-tile-title[href]    (film link)
+  Vetítés:    .react-purchase-container:not(.disabled)
+              button.react-purchase-content    ("17:45")
 """
 
 import os
@@ -30,16 +31,12 @@ from zoneinfo import ZoneInfo
 from playwright.sync_api import sync_playwright
 
 
-# Egy oldalt használunk: artmozi.hu mutatja mind a 4 mozit egyben
-ARTMOZI_URL = "https://artmozi.hu/"
-
-# A 4 mozi CSS slug-ja a react-cinema-* classban
-CINEMAS = {
-    "muvesz-mozi":  "Művész",
-    "puskin-mozi":  "Puskin",
-    "toldi-mozi":   "Toldi",
-    "corvin-mozi":  "Corvin",
-}
+CINEMAS = [
+    {"name": "Művész", "url": "https://muveszmozi.hu/"},
+    {"name": "Puskin", "url": "https://puskinmozi.hu/"},
+    {"name": "Toldi",  "url": "https://toldimozi.hu/"},
+    {"name": "Corvin", "url": "https://corvinmozi.hu/"},
+]
 
 HU_DAYS_SHORT = {0: "H", 1: "K", 2: "Sze", 3: "Cs", 4: "P", 5: "Szo", 6: "V"}
 HU_MONTHS = {
@@ -68,9 +65,7 @@ def get_target_week() -> tuple[date, date]:
 
 
 def parse_day_filter_date(date_text: str, year: int) -> date | None:
-    """
-    "feb. 16" -> date(2026, 2, 16)
-    """
+    """'feb. 16' -> date(2026, 2, 16)"""
     m = re.match(r'([a-záéíóöőúüű]+)\.?\s+(\d{1,2})', date_text.strip().lower())
     if not m:
         return None
@@ -87,93 +82,59 @@ def parse_day_filter_date(date_text: str, year: int) -> date | None:
 
 def get_week_numbers_for_target(monday: date) -> tuple[int, int]:
     """
-    Mozis hét = csütörtök-szerda.
-    Hétfő-Szerda: az aktuális mozis hét száma
-    Csütörtök-Vasárnap: a következő mozis hét száma
-
-    A hétszám az ISO hét, ami a react-week-filter-number-ben jelenik meg.
+    H-Sze: az előző csütörtökhöz tartozó ISO hét
+    Cs-V: a hét csütörtökjéhez tartozó ISO hét
     """
-    # H-Sze napok az előző csütörtökhöz tartozó ISO héten vannak
     prev_thursday = monday - timedelta(days=4)
-    # Cs-V napok a hét csütörtökjéhez tartoznak
     this_thursday = monday + timedelta(days=3)
-
     return prev_thursday.isocalendar()[1], this_thursday.isocalendar()[1]
 
 
-def extract_screenings_for_day(page, target_date: date) -> list[dict]:
+def extract_screenings_for_day(page, target_date: date, cinema_name: str) -> list[dict]:
     """
-    Az aktuálisan megjelenített nap vetítéseit nyeri ki.
-    Visszaad: [{"film": str, "time": str, "cinema_slug": str, "date": date}, ...]
+    Az aktuálisan megjelenített nap vetítéseit nyeri ki JS-sel.
+    Egyedi mozi oldalon vagyunk → minden vetítés ehhez a mozihoz tartozik.
     """
+    data = page.evaluate("""() => {
+        const results = [];
+        const tiles = document.querySelectorAll('.react-film-tile-container');
+        
+        tiles.forEach(tile => {
+            const titleEl = tile.querySelector('.react-film-tile-title-item');
+            if (!titleEl) return;
+            const filmTitle = titleEl.textContent.trim();
+            
+            const linkEl = tile.querySelector('a.react-film-tile-title');
+            const filmUrl = linkEl ? linkEl.getAttribute('href') : '';
+            
+            // Csak a NEM disabled vetítések
+            const containers = tile.querySelectorAll('.react-purchase-container:not(.disabled)');
+            containers.forEach(container => {
+                const btn = container.querySelector('button.react-purchase-content');
+                if (!btn) return;
+                const time = btn.textContent.trim();
+                if (/^\\d{1,2}:\\d{2}$/.test(time)) {
+                    results.push({
+                        film: filmTitle,
+                        time: time,
+                        url: filmUrl || '',
+                    });
+                }
+            });
+        });
+        
+        return results;
+    }""")
+
     screenings = []
-
-    html = page.content()
-
-    # DEBUG: HTML méret és kulcs-szelektorok keresése
-    print(f"      [DEBUG] HTML méret: {len(html)} karakter")
-    
-    title_count = len(re.findall(r'react-film-tile-title-item', html))
-    btn_count = len(re.findall(r'react-purchase-content', html))
-    cinema_count = len(re.findall(r'react-cinema-', html))
-    print(f"      [DEBUG] title-item: {title_count}, purchase-content: {btn_count}, react-cinema-: {cinema_count}")
-    
-    # Ha nincs találat, keressünk más mintákat
-    if title_count == 0:
-        # Keressünk bármilyen "film" vagy "title" classot
-        film_classes = re.findall(r'class="[^"]*(?:film|title|movie)[^"]*"', html, re.IGNORECASE)
-        print(f"      [DEBUG] Film/title/movie classes: {film_classes[:10]}")
-    
-    if btn_count == 0:
-        # Keressünk bármilyen időpontot (HH:MM)
-        times_in_html = re.findall(r'>(\d{1,2}:\d{2})<', html)
-        print(f"      [DEBUG] Időpontok a HTML-ben: {times_in_html[:10]}")
-    
-    # Mentsünk el egy HTML mintát az első napnál
-    if target_date.weekday() == 0:  # hétfő
-        sample_file = f"debug_cinema_html_sample.txt"
-        # A react block környékét mentjük
-        react_idx = html.find('block-artmozi-homepage-react-block')
-        if react_idx >= 0:
-            sample = html[react_idx:react_idx+5000]
-        else:
-            # Az oldal közepéből mentünk egy darabot
-            mid = len(html) // 2
-            sample = html[mid:mid+5000]
-        with open(sample_file, "w", encoding="utf-8") as f:
-            f.write(sample)
-        print(f"      [DEBUG] HTML minta mentve: {sample_file}")
-
-    # Film címek pozíciói
-    title_pattern = re.finditer(
-        r'<span[^>]*class="react-film-tile-title-item"[^>]*>([^<]+)</span>',
-        html
-    )
-    titles_with_pos = [(m.start(), m.group(1).strip()) for m in title_pattern]
-
-    # Vetítés gombok pozíciói
-    button_pattern = re.finditer(
-        r'<button[^>]*class="react-purchase-content[^"]*react-cinema-([a-z-]+)"[^>]*>(\d{1,2}:\d{2})</button>',
-        html
-    )
-    buttons_with_pos = [(m.start(), m.group(1), m.group(2)) for m in button_pattern]
-
-    # Minden gombot a legközelebbi (előtte lévő) filmcímhez rendelünk
-    for btn_pos, cinema_slug, time_str in buttons_with_pos:
-        film_title = "?"
-        for title_pos, title in reversed(titles_with_pos):
-            if title_pos < btn_pos:
-                film_title = title
-                break
-
-        if cinema_slug in CINEMAS:
-            screenings.append({
-                "film": film_title,
-                "time": time_str,
-                "cinema_slug": cinema_slug,
-                "cinema": CINEMAS[cinema_slug],
-                "date": target_date,
-            })
+    for item in data:
+        screenings.append({
+            "film": item["film"],
+            "time": item["time"],
+            "url": item.get("url", ""),
+            "cinema": cinema_name,
+            "date": target_date,
+        })
 
     return screenings
 
@@ -187,48 +148,41 @@ def click_week(page, week_num: int) -> bool:
             if btn.inner_text(timeout=2000).strip() == week_str:
                 btn.click()
                 page.wait_for_timeout(3000)
-                print(f"  Hét {week_str} kiválasztva ✓")
+                print(f"    Hét {week_str} kiválasztva ✓")
                 return True
-        print(f"  Hét {week_str} gomb nem található az oldalon")
+        print(f"    Hét {week_str} nem található")
         return False
     except Exception as e:
-        print(f"  Hétváltó hiba: {e}")
+        print(f"    Hétváltó hiba: {e}")
         return False
 
 
-def click_day_and_scrape(page, target_date: date) -> list[dict]:
-    """
-    Rákattint a megfelelő napra a napváltóban és kinyeri a vetítéseket.
-    """
-    target_str = f"{HU_MONTHS[target_date.month]}. {target_date.day}"
+def click_day_and_scrape(page, target_date: date, cinema_name: str) -> list[dict]:
+    """Rákattint a megfelelő napra és kinyeri a vetítéseket."""
     year = target_date.year
+    day_name = HU_DAYS_SHORT[target_date.weekday()]
 
     day_boxes = page.locator("div.react-day-filter-box:not(.disabled)").all()
     for box in day_boxes:
         try:
             date_el = box.locator(".react-day-filter-date")
             date_text = date_el.inner_text(timeout=2000).strip()
-
             parsed = parse_day_filter_date(date_text, year)
             if parsed == target_date:
                 box.click()
                 page.wait_for_timeout(2000)
-                screenings = extract_screenings_for_day(page, target_date)
-                day_name = HU_DAYS_SHORT[target_date.weekday()]
-                print(f"    {date_text} ({day_name}): {len(screenings)} vetítés")
+                screenings = extract_screenings_for_day(page, target_date, cinema_name)
+                print(f"      {date_text} ({day_name}): {len(screenings)} vetítés")
                 return screenings
         except Exception:
             continue
 
-    print(f"    {target_str} nap nem található / nem kattintható")
+    print(f"      {HU_MONTHS[target_date.month]}. {target_date.day} ({day_name}): nem elérhető")
     return []
 
 
 def scrape_all() -> tuple[list[dict], date, date]:
-    """
-    Mind a 4 mozi következő hetének programját összegyűjti.
-    Az artmozi.hu-t használjuk – egy oldalon mind a 4 mozi vetítése látszik.
-    """
+    """Mind a 4 mozi következő hetének programját összegyűjti."""
     monday, sunday = get_target_week()
     week1, week2 = get_week_numbers_for_target(monday)
 
@@ -246,43 +200,51 @@ def scrape_all() -> tuple[list[dict], date, date]:
         page = context.new_page()
         page.set_default_timeout(60000)
 
-        print(f"\nOldal betöltése: {ARTMOZI_URL}")
-        page.goto(ARTMOZI_URL, wait_until="networkidle", timeout=90000)
-        page.wait_for_timeout(5000)
+        for cinema in CINEMAS:
+            name = cinema["name"]
+            url = cinema["url"]
 
-        # Scrolloljunk a schedule blockhoz
-        try:
-            page.evaluate("document.querySelector('#block-artmozi-homepage-react-block')?.scrollIntoView()")
-            page.wait_for_timeout(2000)
-        except Exception:
-            pass
+            print(f"\n{'='*40}")
+            print(f"[{name}] {url}")
 
-        # --- 1. mozis hét: H, K, Sze ---
-        print(f"\n--- Mozis hét {week1:02d} (hétfő–szerda) ---")
-        click_week(page, week1)
+            try:
+                page.goto(url, wait_until="networkidle", timeout=90000)
+                page.wait_for_timeout(5000)
 
-        for day_offset in range(3):  # H=0, K=1, Sze=2
-            target = monday + timedelta(days=day_offset)
-            screenings = click_day_and_scrape(page, target)
-            all_screenings.extend(screenings)
+                # Scroll a schedule block-hoz
+                try:
+                    page.evaluate("document.querySelector('#block-artmozi-homepage-react-block')?.scrollIntoView()")
+                    page.wait_for_timeout(2000)
+                except Exception:
+                    pass
 
-        # --- 2. mozis hét: Cs, P, Szo, V ---
-        print(f"\n--- Mozis hét {week2:02d} (csütörtök–vasárnap) ---")
-        click_week(page, week2)
+                # --- Mozis hét 1: H, K, Sze ---
+                print(f"  Mozis hét {week1:02d} (H–Sze)")
+                click_week(page, week1)
+                for day_offset in range(3):
+                    target = monday + timedelta(days=day_offset)
+                    screenings = click_day_and_scrape(page, target, name)
+                    all_screenings.extend(screenings)
 
-        for day_offset in range(3, 7):  # Cs=3, P=4, Szo=5, V=6
-            target = monday + timedelta(days=day_offset)
-            screenings = click_day_and_scrape(page, target)
-            all_screenings.extend(screenings)
+                # --- Mozis hét 2: Cs, P, Szo, V ---
+                print(f"  Mozis hét {week2:02d} (Cs–V)")
+                click_week(page, week2)
+                for day_offset in range(3, 7):
+                    target = monday + timedelta(days=day_offset)
+                    screenings = click_day_and_scrape(page, target, name)
+                    all_screenings.extend(screenings)
+
+            except Exception as e:
+                print(f"  [{name}] HIBA: {e}")
 
         browser.close()
 
-    print(f"\nÖsszesen {len(all_screenings)} vetítés gyűjtve")
+    print(f"\nÖsszesen {len(all_screenings)} vetítés")
     return all_screenings, monday, sunday
 
 
 def format_email(all_screenings: list, monday: date, sunday: date) -> tuple[str, str]:
-    """Formázza az emailt film-centrikusan, mozikat alatta felsorolva."""
+    """Film-centrikus email: film -> mozik -> napok+időpontok."""
     mon_str = f"{HU_MONTHS[monday.month]}. {monday.day}."
     sun_str = f"{HU_MONTHS[sunday.month]}. {sunday.day}."
 
@@ -298,40 +260,38 @@ def format_email(all_screenings: list, monday: date, sunday: date) -> tuple[str,
         lines.append("Nem sikerült vetítéseket találni ezen a héten.")
         lines.append("")
         lines.append("Ellenőrizd manuálisan:")
-        lines.append(f"  https://artmozi.hu/")
+        for c in CINEMAS:
+            lines.append(f"  {c['name']}: {c['url']}")
         return subject, "\n".join(lines)
 
-    # Csoportosítás: film -> cinema -> [(nap_short, idő), ...]
-    films: dict[str, dict[str, list[str]]] = {}
+    # Csoportosítás: film -> {url, cinemas: {cinema -> [(nap, idő)]}}
+    films: dict[str, dict] = {}
     for s in all_screenings:
         film = s["film"]
-        cinema = s["cinema"]
-        day_short = HU_DAYS_SHORT[s["date"].weekday()]
-        time_str = s["time"]
-
         if film not in films:
-            films[film] = {}
-        if cinema not in films[film]:
-            films[film][cinema] = []
-        films[film][cinema].append(f"{day_short} {time_str}")
+            films[film] = {"url": s.get("url", ""), "cinemas": {}}
+        cinema = s["cinema"]
+        if cinema not in films[film]["cinemas"]:
+            films[film]["cinemas"][cinema] = []
+        day_short = HU_DAYS_SHORT[s["date"].weekday()]
+        films[film]["cinemas"][cinema].append(f"{day_short} {s['time']}")
 
-    # Rendezés filmcím szerint
     for film in sorted(films.keys(), key=str.lower):
-        # Film slug a linkhez (ékezetek eltávolítása)
-        slug = film.lower()
-        for hun, asc in [("á","a"),("é","e"),("í","i"),("ó","o"),("ö","o"),("ő","o"),("ú","u"),("ü","u"),("ű","u")]:
-            slug = slug.replace(hun, asc)
-        slug = re.sub(r'[^\w\s-]', '', slug)
-        slug = re.sub(r'[\s]+', '-', slug).strip('-')
+        info = films[film]
+        
+        # Film URL
+        film_url = info["url"]
+        if film_url and not film_url.startswith("http"):
+            film_url = f"https://artmozi.hu{film_url}"
 
         lines.append(f"🎬 {film}")
-        lines.append(f"   https://artmozi.hu/filmek/{slug}")
+        if film_url:
+            lines.append(f"   {film_url}")
 
-        for cinema in ["Művész", "Puskin", "Toldi", "Corvin"]:
-            if cinema in films[film]:
-                times = films[film][cinema]
-                # Csoportosítás napok szerint
-                lines.append(f"   {cinema}: {' | '.join(times)}")
+        for cinema_name in ["Művész", "Puskin", "Toldi", "Corvin"]:
+            if cinema_name in info["cinemas"]:
+                times = info["cinemas"][cinema_name]
+                lines.append(f"   {cinema_name}: {' | '.join(times)}")
 
         lines.append("")
 
@@ -347,7 +307,7 @@ def send_email(subject: str, body: str):
     to_emails_raw = os.environ.get("TO_EMAILS")
 
     if not smtp_user or not smtp_pass or not to_emails_raw:
-        print(f"\n[EMAIL] Nincs SMTP beállítva, email tartalom:")
+        print(f"\n[EMAIL] Nincs SMTP, tartalom:")
         print(f"  Tárgy: {subject}")
         print(f"\n{body}")
         return
