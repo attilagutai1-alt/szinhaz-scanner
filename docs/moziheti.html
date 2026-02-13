@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mozihét 2026.02.16. – 2026.02.22.</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: #0a0a0a;
+  color: #e8e8e8;
+  min-height: 100vh;
+}
+
+.header {
+  padding: 2rem 1.5rem 1rem;
+  text-align: center;
+  border-bottom: 1px solid #222;
+}
+.header h1 {
+  font-family: 'Space Mono', monospace;
+  font-size: clamp(1.2rem, 4vw, 1.8rem);
+  letter-spacing: -0.02em;
+  color: #fff;
+  margin-bottom: 0.3rem;
+}
+.header .subtitle {
+  color: #888;
+  font-size: 0.85rem;
+}
+
+.filters {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #1a1a1a;
+  position: sticky;
+  top: 0;
+  background: #0a0a0a;
+  z-index: 10;
+}
+.filter-section { margin-bottom: 0.75rem; }
+.filter-section:last-child { margin-bottom: 0; }
+.filter-row {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+.filter-label {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #555;
+  margin-bottom: 0.35rem;
+}
+.filter-btn {
+  padding: 0.35rem 0.7rem;
+  border: 1px solid #333;
+  border-radius: 2rem;
+  background: transparent;
+  color: #aaa;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.filter-btn:hover { border-color: #666; color: #fff; }
+.filter-btn.active {
+  background: #fff;
+  color: #0a0a0a;
+  border-color: #fff;
+  font-weight: 600;
+}
+
+.cinema-btn[data-cinema="Művész"].active { background: #A0DAE8; border-color: #A0DAE8; color: #0a0a0a; }
+.cinema-btn[data-cinema="Puskin"].active { background: #FFD451; border-color: #FFD451; color: #0a0a0a; }
+.cinema-btn[data-cinema="Toldi"].active { background: #EB7126; border-color: #EB7126; color: #fff; }
+.cinema-btn[data-cinema="Corvin"].active { background: #e54545; border-color: #e54545; color: #fff; }
+
+.genre-btn.active {
+  background: #c084fc;
+  border-color: #c084fc;
+  color: #0a0a0a;
+}
+
+.content {
+  padding: 1.5rem;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.film-card {
+  margin-bottom: 1.2rem;
+  border: 1px solid #1e1e1e;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #111;
+  transition: border-color 0.2s;
+}
+.film-card:hover { border-color: #333; }
+.film-header {
+  padding: 1rem 1.2rem 0.4rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+.film-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #fff;
+}
+.film-title a {
+  color: inherit;
+  text-decoration: none;
+}
+.film-title a:hover { text-decoration: underline; }
+.film-count {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.7rem;
+  color: #666;
+  white-space: nowrap;
+}
+.film-genres {
+  padding: 0 1.2rem 0.5rem;
+  display: flex;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+}
+.genre-tag {
+  font-size: 0.65rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 1rem;
+  background: #1e1e1e;
+  color: #999;
+  font-weight: 500;
+}
+.film-screenings {
+  padding: 0 1.2rem 1rem;
+}
+.cinema-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  margin-bottom: 0.4rem;
+  flex-wrap: wrap;
+}
+.cinema-name {
+  font-weight: 600;
+  font-size: 0.8rem;
+  min-width: 60px;
+  color: #999;
+}
+.cinema-name.muvesz { color: #A0DAE8; }
+.cinema-name.puskin { color: #FFD451; }
+.cinema-name.toldi { color: #EB7126; }
+.cinema-name.corvin { color: #e54545; }
+
+.time-chip {
+  display: inline-block;
+  padding: 0.2rem 0.55rem;
+  border-radius: 4px;
+  background: #1e1e1e;
+  font-family: 'Space Mono', monospace;
+  font-size: 0.75rem;
+  color: #ccc;
+  margin: 0.1rem;
+}
+.day-label {
+  font-size: 0.65rem;
+  color: #666;
+  margin-right: 0.1rem;
+}
+
+.empty {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: #555;
+}
+.empty .emoji { font-size: 2.5rem; margin-bottom: 1rem; }
+
+.stats {
+  text-align: center;
+  padding: 1rem;
+  color: #444;
+  font-size: 0.75rem;
+  font-family: 'Space Mono', monospace;
+  border-top: 1px solid #1a1a1a;
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🎬 Mozihét</h1>
+  <div class="subtitle">2026.02.16. (hétfő) – 2026.02.22. (vasárnap)</div>
+</div>
+
+<div class="filters">
+  <div class="filter-section">
+    <div class="filter-label">Mozi</div>
+    <div class="filter-row" id="cinema-filters">
+      <button class="filter-btn cinema-btn active" data-cinema="all">Mind</button>
+      <button class="filter-btn cinema-btn" data-cinema="Művész">Művész</button>
+      <button class="filter-btn cinema-btn" data-cinema="Puskin">Puskin</button>
+      <button class="filter-btn cinema-btn" data-cinema="Toldi">Toldi</button>
+      <button class="filter-btn cinema-btn" data-cinema="Corvin">Corvin</button>
+    </div>
+  </div>
+  <div class="filter-section">
+    <div class="filter-label">Nap</div>
+    <div class="filter-row" id="day-filters">
+      <button class="filter-btn day-btn active" data-day="all">Mind</button>
+    </div>
+  </div>
+  <div class="filter-section">
+    <div class="filter-label">Műfaj</div>
+    <div class="filter-row" id="genre-filters">
+      <button class="filter-btn genre-btn active" data-genre="all">Mind</button>
+    </div>
+  </div>
+</div>
+
+<div class="content" id="content"></div>
+<div class="stats" id="stats"></div>
+
+<script>
+const screenings = [{"film": "Alpha", "time": "21:15", "url": "https://muveszmozi.hu/filmek/alpha", "cinema": "Művész", "date": "2026-02-16", "day_short": "H", "day_long": "Hétfő"}, {"film": "Beléd estem", "time": "14:00", "url": "https://muveszmozi.hu/filmek/beled-estem", "cinema": "Művész", "date": "2026-02-16", "day_short": "H", "day_long": "Hétfő"}, {"film": "A tenger útja", "time": "16:30", "url": "https://muveszmozi.hu/filmek/tenger-utja", "cinema": "Művész", "date": "2026-02-16", "day_short": "H", "day_long": "Hétfő"}, {"film": "Bérelt család", "time": "13:30", "url": "https://muveszmozi.hu/filmek/berelt-csalad", "cinema": "Művész", "date": "2026-02-16", "day_short": "H", "day_long": "Hétfő"}, {"film": "Bérelt család", "time": "16:00", "url": "https://muveszmozi.hu/filmek/berelt-csalad", "cinema": "Művész", "date": "2026-02-16", "day_short": "H", "day_long": "Hétfő"}, {"film": "Csendes barát", "time": "15:00", "url": "https://muveszmozi.hu/filmek/csendes-barat", "cinema": "Művész", "date": "2026-02-16", "day_short": "H", "day_long": "Hétfő"}, {"film": "Csendes barát", "time": "17:45", "url": "https://muveszmozi.hu/filmek/csendes-barat", "cinema": "Művész", "date": "2026-02-16", "day_short": "H", "day_long": "Hétfő"}, {"film": "Dögölj meg szerelmem", "time": "21:00", "url": "https://muveszmozi.hu/filmek/dogolj-meg-szerelmem", "cinema": "Művész", "date": "2026-02-16", "day_short": "H", "day_long": "Hétfő"}, {"film": "Érzelmi érték", "time": "13:30", "url": "https://muveszmozi.hu/filmek/erzelmi-ertek", "cinema": "Művész", "date": "2026-02-16", "day_short": "H", "day_long": "Hétfő"}, {"film": "Érzelmi érték", "time": "18:00", "url": "https://muveszmozi.hu/filmek/erzelmi-ertek", "cinema": "Művész", "date": "2026-02-16", "day_short": "H", "day_long": "Hétfő"}, {"film": "Father Mother Sister Brother", "time": "15:45", "url": "https://muveszmozi.hu/filmek/father-mother-sister-brother", "cinema": "Művész", "date": "2026-02-16", "day_short": "H", "day_long": "Hétfő"}, {"film": "Father Mother Sister Brother", "time": "20:30", "url": "https://muveszmozi.hu/filmek/father-mother-sister-brother", "cinema": "Művész", "date": "2026-02-16", "day_short": "H", "day_long": "Hétfő"}, {"film": "Filmrendezők klubja – Kardos Ferenc – Rózsa János: Gyerekbetegségek", "time": "19:00", "url": "https://muveszmozi.hu/filmek/filmrendezok-klubja-kardos-ferenc-rozsa-janos-gyerekbetegsegek", "cinema": "Művész", "date": "2026-02-16", "day_short": "H", "day_long": "Hétfő"}, {"film": "Hamnet", "time": "18:45", "url": "https://muveszmozi.hu/filmek/hamnet", "cinema": "Művész", "date": "2026-02-16", "day_short": "H", "day_long": "Hétfő"}, {"film": "Marty Supreme", "time": "15:45", "url": "https://muveszmozi.hu/filmek/marty-supreme", "cinema": "Művész", "date": "2026-02-16", "day_short": "H", "day_long": "Hétfő"}, {"film": "Marty Supreme", "time": "20:30", "url": "https://muveszmozi.hu/filmek/marty-supreme", "cinema": "Művész", "date": "2026-02-16", "day_short": "H", "day_long": "Hétfő"}, {"film": "Melania", "time": "13:00", "url": "https://muveszmozi.hu/filmek/melania", "cinema": "Művész", "date": "2026-02-16", "day_short": "H", "day_long": "Hétfő"}, {"film": "Nincs más választás", "time": "13:45", "url": "https://muveszmozi.hu/filmek/nincs-mas-valasztas", "cinema": "Művész", "date": "2026-02-16", "day_short": "H", "day_long": "Hétfő"}, {"film": "Nürnberg", "time": "18:15", "url": "https://muveszmozi.hu/filmek/nurnberg", "cinema": "Művész", "date": "2026-02-16", "day_short": "H", "day_long": "Hétfő"}, {"film": "Alpha", "time": "21:00", "url": "https://muveszmozi.hu/filmek/alpha", "cinema": "Művész", "date": "2026-02-17", "day_short": "K", "day_long": "Kedd"}, {"film": "Beléd estem", "time": "14:00", "url": "https://muveszmozi.hu/filmek/beled-estem", "cinema": "Művész", "date": "2026-02-17", "day_short": "K", "day_long": "Kedd"}, {"film": "Beléd estem", "time": "18:30", "url": "https://muveszmozi.hu/filmek/beled-estem", "cinema": "Művész", "date": "2026-02-17", "day_short": "K", "day_long": "Kedd"}, {"film": "A tenger útja", "time": "19:00", "url": "https://muveszmozi.hu/filmek/tenger-utja", "cinema": "Művész", "date": "2026-02-17", "day_short": "K", "day_long": "Kedd"}, {"film": "Az utolsó viking", "time": "16:00", "url": "https://muveszmozi.hu/filmek/az-utolso-viking", "cinema": "Művész", "date": "2026-02-17", "day_short": "K", "day_long": "Kedd"}, {"film": "Bérelt család", "time": "13:30", "url": "https://muveszmozi.hu/filmek/berelt-csalad", "cinema": "Művész", "date": "2026-02-17", "day_short": "K", "day_long": "Kedd"}, {"film": "Bérelt család", "time": "20:30", "url": "https://muveszmozi.hu/filmek/berelt-csalad", "cinema": "Művész", "date": "2026-02-17", "day_short": "K", "day_long": "Kedd"}, {"film": "Bugonia", "time": "21:15", "url": "https://muveszmozi.hu/filmek/bugonia", "cinema": "Művész", "date": "2026-02-17", "day_short": "K", "day_long": "Kedd"}, {"film": "Csak egy baleset", "time": "14:00", "url": "https://muveszmozi.hu/filmek/csak-egy-baleset", "cinema": "Művész", "date": "2026-02-17", "day_short": "K", "day_long": "Kedd"}, {"film": "Csendes barát", "time": "15:00", "url": "https://muveszmozi.hu/filmek/csendes-barat", "cinema": "Művész", "date": "2026-02-17", "day_short": "K", "day_long": "Kedd"}, {"film": "Csendes barát", "time": "17:45", "url": "https://muveszmozi.hu/filmek/csendes-barat", "cinema": "Művész", "date": "2026-02-17", "day_short": "K", "day_long": "Kedd"}, {"film": "Érzelmi érték", "time": "18:00", "url": "https://muveszmozi.hu/filmek/erzelmi-ertek", "cinema": "Művész", "date": "2026-02-17", "day_short": "K", "day_long": "Kedd"}, {"film": "Father Mother Sister Brother", "time": "15:45", "url": "https://muveszmozi.hu/filmek/father-mother-sister-brother", "cinema": "Művész", "date": "2026-02-17", "day_short": "K", "day_long": "Kedd"}, {"film": "Father Mother Sister Brother", "time": "20:15", "url": "https://muveszmozi.hu/filmek/father-mother-sister-brother", "cinema": "Művész", "date": "2026-02-17", "day_short": "K", "day_long": "Kedd"}, {"film": "Hamnet", "time": "16:30", "url": "https://muveszmozi.hu/filmek/hamnet", "cinema": "Művész", "date": "2026-02-17", "day_short": "K", "day_long": "Kedd"}, {"film": "Marty Supreme", "time": "15:45", "url": "https://muveszmozi.hu/filmek/marty-supreme", "cinema": "Művész", "date": "2026-02-17", "day_short": "K", "day_long": "Kedd"}, {"film": "Marty Supreme", "time": "20:30", "url": "https://muveszmozi.hu/filmek/marty-supreme", "cinema": "Művész", "date": "2026-02-17", "day_short": "K", "day_long": "Kedd"}, {"film": "Melania", "time": "13:00", "url": "https://muveszmozi.hu/filmek/melania", "cinema": "Művész", "date": "2026-02-17", "day_short": "K", "day_long": "Kedd"}, {"film": "Nincs más választás", "time": "18:15", "url": "https://muveszmozi.hu/filmek/nincs-mas-valasztas", "cinema": "Művész", "date": "2026-02-17", "day_short": "K", "day_long": "Kedd"}, {"film": "Nürnberg", "time": "13:45", "url": "https://muveszmozi.hu/filmek/nurnberg", "cinema": "Művész", "date": "2026-02-17", "day_short": "K", "day_long": "Kedd"}, {"film": "Filmterápia Est: Ha tudnék, beléd rúgnék", "time": "19:30", "url": "https://muveszmozi.hu/filmek/filmterapia-est-ha-tudnek-beled-rugnek", "cinema": "Művész", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "Alpha", "time": "21:15", "url": "https://muveszmozi.hu/filmek/alpha", "cinema": "Művész", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "Beléd estem", "time": "13:30", "url": "https://muveszmozi.hu/filmek/beled-estem", "cinema": "Művész", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "Beléd estem", "time": "17:45", "url": "https://muveszmozi.hu/filmek/beled-estem", "cinema": "Művész", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "A tenger útja", "time": "16:30", "url": "https://muveszmozi.hu/filmek/tenger-utja", "cinema": "Művész", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "Bérelt család", "time": "13:30", "url": "https://muveszmozi.hu/filmek/berelt-csalad", "cinema": "Művész", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "Bérelt család", "time": "16:00", "url": "https://muveszmozi.hu/filmek/berelt-csalad", "cinema": "Művész", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "Csendes barát", "time": "15:00", "url": "https://muveszmozi.hu/filmek/csendes-barat", "cinema": "Művész", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "Csendes barát", "time": "18:00", "url": "https://muveszmozi.hu/filmek/csendes-barat", "cinema": "Művész", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "Dögölj meg szerelmem", "time": "21:00", "url": "https://muveszmozi.hu/filmek/dogolj-meg-szerelmem", "cinema": "Művész", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "Érzelmi érték", "time": "13:30", "url": "https://muveszmozi.hu/filmek/erzelmi-ertek", "cinema": "Művész", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "Érzelmi érték", "time": "18:00", "url": "https://muveszmozi.hu/filmek/erzelmi-ertek", "cinema": "Művész", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "Father Mother Sister Brother", "time": "15:45", "url": "https://muveszmozi.hu/filmek/father-mother-sister-brother", "cinema": "Művész", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "Father Mother Sister Brother", "time": "20:45", "url": "https://muveszmozi.hu/filmek/father-mother-sister-brother", "cinema": "Művész", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "Hamnet", "time": "18:45", "url": "https://muveszmozi.hu/filmek/hamnet", "cinema": "Művész", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "Marty Supreme", "time": "15:15", "url": "https://muveszmozi.hu/filmek/marty-supreme", "cinema": "Művész", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "Marty Supreme", "time": "20:30", "url": "https://muveszmozi.hu/filmek/marty-supreme", "cinema": "Művész", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "Melania", "time": "13:00", "url": "https://muveszmozi.hu/filmek/melania", "cinema": "Művész", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "Nincs más választás", "time": "13:45", "url": "https://muveszmozi.hu/filmek/nincs-mas-valasztas", "cinema": "Művész", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "Nürnberg", "time": "18:15", "url": "https://muveszmozi.hu/filmek/nurnberg", "cinema": "Művész", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "Beléd estem", "time": "14:45", "url": "https://puskinmozi.hu/filmek/beled-estem", "cinema": "Puskin", "date": "2026-02-16", "day_short": "H", "day_long": "Hétfő"}, {"film": "Beléd estem", "time": "18:30", "url": "https://puskinmozi.hu/filmek/beled-estem", "cinema": "Puskin", "date": "2026-02-16", "day_short": "H", "day_long": "Hétfő"}, {"film": "Üvöltő szelek", "time": "15:00", "url": "https://puskinmozi.hu/filmek/uvolto-szelek", "cinema": "Puskin", "date": "2026-02-16", "day_short": "H", "day_long": "Hétfő"}, {"film": "Üvöltő szelek", "time": "20:00", "url": "https://puskinmozi.hu/filmek/uvolto-szelek", "cinema": "Puskin", "date": "2026-02-16", "day_short": "H", "day_long": "Hétfő"}, {"film": "Csak egy baleset", "time": "18:00", "url": "https://puskinmozi.hu/filmek/csak-egy-baleset", "cinema": "Puskin", "date": "2026-02-16", "day_short": "H", "day_long": "Hétfő"}, {"film": "Csendes barát", "time": "17:15", "url": "https://puskinmozi.hu/filmek/csendes-barat", "cinema": "Puskin", "date": "2026-02-16", "day_short": "H", "day_long": "Hétfő"}, {"film": "Dalai Láma – A boldogság tanítása", "time": "16:45", "url": "https://puskinmozi.hu/filmek/dalai-lama-boldogsag-tanitasa", "cinema": "Puskin", "date": "2026-02-16", "day_short": "H", "day_long": "Hétfő"}, {"film": "Egybenyíló szobák", "time": "18:30", "url": "https://puskinmozi.hu/filmek/egybenyilo-szobak", "cinema": "Puskin", "date": "2026-02-16", "day_short": "H", "day_long": "Hétfő"}, {"film": "Érzelmi érték", "time": "17:30", "url": "https://puskinmozi.hu/filmek/erzelmi-ertek", "cinema": "Puskin", "date": "2026-02-16", "day_short": "H", "day_long": "Hétfő"}, {"film": "Father Mother Sister Brother", "time": "20:30", "url": "https://puskinmozi.hu/filmek/father-mother-sister-brother", "cinema": "Puskin", "date": "2026-02-16", "day_short": "H", "day_long": "Hétfő"}, {"film": "Fiume vagy halál!", "time": "20:15", "url": "https://puskinmozi.hu/filmek/fiume-vagy-halal", "cinema": "Puskin", "date": "2026-02-16", "day_short": "H", "day_long": "Hétfő"}, {"film": "Hamnet", "time": "14:45", "url": "https://puskinmozi.hu/filmek/hamnet", "cinema": "Puskin", "date": "2026-02-16", "day_short": "H", "day_long": "Hétfő"}, {"film": "Josef Mengele eltűnése", "time": "15:30", "url": "https://puskinmozi.hu/filmek/josef-mengele-eltunese", "cinema": "Puskin", "date": "2026-02-16", "day_short": "H", "day_long": "Hétfő"}, {"film": "Magyar menyegző", "time": "16:30", "url": "https://puskinmozi.hu/filmek/magyar-menyegzo", "cinema": "Puskin", "date": "2026-02-16", "day_short": "H", "day_long": "Hétfő"}, {"film": "Marty Supreme", "time": "20:00", "url": "https://puskinmozi.hu/filmek/marty-supreme", "cinema": "Puskin", "date": "2026-02-16", "day_short": "H", "day_long": "Hétfő"}, {"film": "Minden csillag", "time": "15:00", "url": "https://puskinmozi.hu/filmek/minden-csillag", "cinema": "Puskin", "date": "2026-02-16", "day_short": "H", "day_long": "Hétfő"}, {"film": "Minden csillag", "time": "20:30", "url": "https://puskinmozi.hu/filmek/minden-csillag", "cinema": "Puskin", "date": "2026-02-16", "day_short": "H", "day_long": "Hétfő"}, {"film": "Beléd estem", "time": "14:45", "url": "https://puskinmozi.hu/filmek/beled-estem", "cinema": "Puskin", "date": "2026-02-17", "day_short": "K", "day_long": "Kedd"}, {"film": "Beléd estem", "time": "18:30", "url": "https://puskinmozi.hu/filmek/beled-estem", "cinema": "Puskin", "date": "2026-02-17", "day_short": "K", "day_long": "Kedd"}, {"film": "Üvöltő szelek", "time": "15:00", "url": "https://puskinmozi.hu/filmek/uvolto-szelek", "cinema": "Puskin", "date": "2026-02-17", "day_short": "K", "day_long": "Kedd"}, {"film": "Üvöltő szelek", "time": "20:00", "url": "https://puskinmozi.hu/filmek/uvolto-szelek", "cinema": "Puskin", "date": "2026-02-17", "day_short": "K", "day_long": "Kedd"}, {"film": "Csak egy baleset", "time": "18:00", "url": "https://puskinmozi.hu/filmek/csak-egy-baleset", "cinema": "Puskin", "date": "2026-02-17", "day_short": "K", "day_long": "Kedd"}, {"film": "Csendes barát", "time": "17:15", "url": "https://puskinmozi.hu/filmek/csendes-barat", "cinema": "Puskin", "date": "2026-02-17", "day_short": "K", "day_long": "Kedd"}, {"film": "Dalai Láma – A boldogság tanítása", "time": "16:45", "url": "https://puskinmozi.hu/filmek/dalai-lama-boldogsag-tanitasa", "cinema": "Puskin", "date": "2026-02-17", "day_short": "K", "day_long": "Kedd"}, {"film": "Egybenyíló szobák", "time": "18:30", "url": "https://puskinmozi.hu/filmek/egybenyilo-szobak", "cinema": "Puskin", "date": "2026-02-17", "day_short": "K", "day_long": "Kedd"}, {"film": "Érzelmi érték", "time": "17:30", "url": "https://puskinmozi.hu/filmek/erzelmi-ertek", "cinema": "Puskin", "date": "2026-02-17", "day_short": "K", "day_long": "Kedd"}, {"film": "Father Mother Sister Brother", "time": "20:30", "url": "https://puskinmozi.hu/filmek/father-mother-sister-brother", "cinema": "Puskin", "date": "2026-02-17", "day_short": "K", "day_long": "Kedd"}, {"film": "Fiume vagy halál!", "time": "20:15", "url": "https://puskinmozi.hu/filmek/fiume-vagy-halal", "cinema": "Puskin", "date": "2026-02-17", "day_short": "K", "day_long": "Kedd"}, {"film": "Hamnet", "time": "14:45", "url": "https://puskinmozi.hu/filmek/hamnet", "cinema": "Puskin", "date": "2026-02-17", "day_short": "K", "day_long": "Kedd"}, {"film": "Josef Mengele eltűnése", "time": "15:30", "url": "https://puskinmozi.hu/filmek/josef-mengele-eltunese", "cinema": "Puskin", "date": "2026-02-17", "day_short": "K", "day_long": "Kedd"}, {"film": "Magyar menyegző", "time": "16:30", "url": "https://puskinmozi.hu/filmek/magyar-menyegzo", "cinema": "Puskin", "date": "2026-02-17", "day_short": "K", "day_long": "Kedd"}, {"film": "Marty Supreme", "time": "20:00", "url": "https://puskinmozi.hu/filmek/marty-supreme", "cinema": "Puskin", "date": "2026-02-17", "day_short": "K", "day_long": "Kedd"}, {"film": "Minden csillag", "time": "15:00", "url": "https://puskinmozi.hu/filmek/minden-csillag", "cinema": "Puskin", "date": "2026-02-17", "day_short": "K", "day_long": "Kedd"}, {"film": "Minden csillag", "time": "20:30", "url": "https://puskinmozi.hu/filmek/minden-csillag", "cinema": "Puskin", "date": "2026-02-17", "day_short": "K", "day_long": "Kedd"}, {"film": "Beléd estem", "time": "14:45", "url": "https://puskinmozi.hu/filmek/beled-estem", "cinema": "Puskin", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "Beléd estem", "time": "18:30", "url": "https://puskinmozi.hu/filmek/beled-estem", "cinema": "Puskin", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "Üvöltő szelek", "time": "15:00", "url": "https://puskinmozi.hu/filmek/uvolto-szelek", "cinema": "Puskin", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "Üvöltő szelek", "time": "20:00", "url": "https://puskinmozi.hu/filmek/uvolto-szelek", "cinema": "Puskin", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "Csak egy baleset", "time": "18:00", "url": "https://puskinmozi.hu/filmek/csak-egy-baleset", "cinema": "Puskin", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "Csendes barát", "time": "17:15", "url": "https://puskinmozi.hu/filmek/csendes-barat", "cinema": "Puskin", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "Dalai Láma – A boldogság tanítása", "time": "16:45", "url": "https://puskinmozi.hu/filmek/dalai-lama-boldogsag-tanitasa", "cinema": "Puskin", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "Egybenyíló szobák", "time": "18:30", "url": "https://puskinmozi.hu/filmek/egybenyilo-szobak", "cinema": "Puskin", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "Érzelmi érték", "time": "17:30", "url": "https://puskinmozi.hu/filmek/erzelmi-ertek", "cinema": "Puskin", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "Father Mother Sister Brother", "time": "20:30", "url": "https://puskinmozi.hu/filmek/father-mother-sister-brother", "cinema": "Puskin", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "Fiume vagy halál!", "time": "20:15", "url": "https://puskinmozi.hu/filmek/fiume-vagy-halal", "cinema": "Puskin", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "Hamnet", "time": "14:45", "url": "https://puskinmozi.hu/filmek/hamnet", "cinema": "Puskin", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "Josef Mengele eltűnése", "time": "15:30", "url": "https://puskinmozi.hu/filmek/josef-mengele-eltunese", "cinema": "Puskin", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "Magyar menyegző", "time": "16:30", "url": "https://puskinmozi.hu/filmek/magyar-menyegzo", "cinema": "Puskin", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "Marty Supreme", "time": "20:00", "url": "https://puskinmozi.hu/filmek/marty-supreme", "cinema": "Puskin", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "Minden csillag", "time": "15:00", "url": "https://puskinmozi.hu/filmek/minden-csillag", "cinema": "Puskin", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "Minden csillag", "time": "20:30", "url": "https://puskinmozi.hu/filmek/minden-csillag", "cinema": "Puskin", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "Ernest és Célestine – A dallamok útján", "time": "10:00", "url": "https://puskinmozi.hu/filmek/ernest-es-celestine-dallamok-utjan", "cinema": "Puskin", "date": "2026-02-21", "day_short": "Szo", "day_long": "Szombat"}, {"film": "Nefelejcs Bábszínház - Boribon cicája", "time": "10:00", "url": "https://puskinmozi.hu/filmek/nefelejcs-babszinhaz-boribon-cicaja", "cinema": "Puskin", "date": "2026-02-22", "day_short": "V", "day_long": "Vasárnap"}, {"film": "Üvöltő szelek", "time": "17:45", "url": "https://toldimozi.hu/filmek/uvolto-szelek", "cinema": "Toldi", "date": "2026-02-16", "day_short": "H", "day_long": "Hétfő"}, {"film": "Bugonia", "time": "20:30", "url": "https://toldimozi.hu/filmek/bugonia", "cinema": "Toldi", "date": "2026-02-16", "day_short": "H", "day_long": "Hétfő"}, {"film": "Csendes barát", "time": "20:15", "url": "https://toldimozi.hu/filmek/csendes-barat", "cinema": "Toldi", "date": "2026-02-16", "day_short": "H", "day_long": "Hétfő"}, {"film": "Hamnet", "time": "14:45", "url": "https://toldimozi.hu/filmek/hamnet", "cinema": "Toldi", "date": "2026-02-16", "day_short": "H", "day_long": "Hétfő"}, {"film": "Marty Supreme", "time": "17:15", "url": "https://toldimozi.hu/filmek/marty-supreme", "cinema": "Toldi", "date": "2026-02-16", "day_short": "H", "day_long": "Hétfő"}, {"film": "Nincs más választás", "time": "15:00", "url": "https://toldimozi.hu/filmek/nincs-mas-valasztas", "cinema": "Toldi", "date": "2026-02-16", "day_short": "H", "day_long": "Hétfő"}, {"film": "Az utolsó viking", "time": "15:45", "url": "https://toldimozi.hu/filmek/az-utolso-viking", "cinema": "Toldi", "date": "2026-02-17", "day_short": "K", "day_long": "Kedd"}, {"film": "Csendes barát", "time": "20:15", "url": "https://toldimozi.hu/filmek/csendes-barat", "cinema": "Toldi", "date": "2026-02-17", "day_short": "K", "day_long": "Kedd"}, {"film": "Érzelmi érték", "time": "20:30", "url": "https://toldimozi.hu/filmek/erzelmi-ertek", "cinema": "Toldi", "date": "2026-02-17", "day_short": "K", "day_long": "Kedd"}, {"film": "Father Mother Sister Brother", "time": "18:15", "url": "https://toldimozi.hu/filmek/father-mother-sister-brother", "cinema": "Toldi", "date": "2026-02-17", "day_short": "K", "day_long": "Kedd"}, {"film": "Hamnet", "time": "14:45", "url": "https://toldimozi.hu/filmek/hamnet", "cinema": "Toldi", "date": "2026-02-17", "day_short": "K", "day_long": "Kedd"}, {"film": "Marty Supreme", "time": "17:15", "url": "https://toldimozi.hu/filmek/marty-supreme", "cinema": "Toldi", "date": "2026-02-17", "day_short": "K", "day_long": "Kedd"}, {"film": "Alpha", "time": "14:45", "url": "https://toldimozi.hu/filmek/alpha", "cinema": "Toldi", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "Finn Filmnapok 2026 - Soha ki nem alvó fény", "time": "19:00", "url": "https://toldimozi.hu/filmek/finn-filmnapok-2026-soha-ki-nem-alvo-feny", "cinema": "Toldi", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "Üvöltő szelek", "time": "16:00", "url": "https://toldimozi.hu/filmek/uvolto-szelek", "cinema": "Toldi", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "Csendes barát", "time": "20:15", "url": "https://toldimozi.hu/filmek/csendes-barat", "cinema": "Toldi", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "Marty Supreme", "time": "17:15", "url": "https://toldimozi.hu/filmek/marty-supreme", "cinema": "Toldi", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "Finn Filmnapok 2026 - Egy őrült nyár", "time": "20:00", "url": "https://toldimozi.hu/filmek/finn-filmnapok-2026-egy-orult-nyar", "cinema": "Toldi", "date": "2026-02-19", "day_short": "Cs", "day_long": "Csütörtök"}, {"film": "Finn Filmnapok 2026 - A jövő képkockái - Finn filmes diákok alkotásai", "time": "17:00", "url": "https://toldimozi.hu/filmek/finn-filmnapok-2026-jovo-kepkockai-finn-filmes-diakok-alkotasai", "cinema": "Toldi", "date": "2026-02-19", "day_short": "Cs", "day_long": "Csütörtök"}, {"film": "Finn Filmnapok 2026 - Almatolvajok", "time": "20:30", "url": "https://toldimozi.hu/filmek/finn-filmnapok-2026-almatolvajok", "cinema": "Toldi", "date": "2026-02-20", "day_short": "P", "day_long": "Péntek"}, {"film": "Finn Filmnapok 2026 - Napok tele csodával", "time": "18:00", "url": "https://toldimozi.hu/filmek/finn-filmnapok-2026-napok-tele-csodaval", "cinema": "Toldi", "date": "2026-02-20", "day_short": "P", "day_long": "Péntek"}, {"film": "Finn Filmnapok 2026 - Sörben az igazság", "time": "18:30", "url": "https://toldimozi.hu/filmek/finn-filmnapok-2026-sorben-az-igazsag", "cinema": "Toldi", "date": "2026-02-20", "day_short": "P", "day_long": "Péntek"}, {"film": "Finn Filmnapok 2026 - A 6-os kupé", "time": "17:30", "url": "https://toldimozi.hu/filmek/finn-filmnapok-2026-6-os-kupe", "cinema": "Toldi", "date": "2026-02-21", "day_short": "Szo", "day_long": "Szombat"}, {"film": "Finn Filmnapok 2026 - Égő föld – Leckék a tűzről", "time": "14:00", "url": "https://toldimozi.hu/filmek/finn-filmnapok-2026-ego-fold-leckek-tuzrol", "cinema": "Toldi", "date": "2026-02-21", "day_short": "Szo", "day_long": "Szombat"}, {"film": "Finn Filmnapok 2026 - Menekülés Mikulásországból", "time": "20:30", "url": "https://toldimozi.hu/filmek/finn-filmnapok-2026-menekules-mikulasorszagbol", "cinema": "Toldi", "date": "2026-02-21", "day_short": "Szo", "day_long": "Szombat"}, {"film": "Finn Filmnapok 2026 - FinnAgora x Aurora Klímakert: panelbeszélgetés", "time": "16:00", "url": "https://toldimozi.hu/filmek/finn-filmnapok-2026-finnagora-x-aurora-klimakert-panelbeszelgetes", "cinema": "Toldi", "date": "2026-02-21", "day_short": "Szo", "day_long": "Szombat"}, {"film": "Finn Filmnapok 2026 - Rövidfilmvetítés: Monumentális Mozgalom", "time": "18:00", "url": "https://toldimozi.hu/filmek/finn-filmnapok-2026-rovidfilmvetites-monumentalis-mozgalom", "cinema": "Toldi", "date": "2026-02-21", "day_short": "Szo", "day_long": "Szombat"}, {"film": "Finn Filmnapok 2026 - Soha ki nem alvó fény", "time": "20:00", "url": "https://toldimozi.hu/filmek/finn-filmnapok-2026-soha-ki-nem-alvo-feny", "cinema": "Toldi", "date": "2026-02-21", "day_short": "Szo", "day_long": "Szombat"}, {"film": "Finn Filmnapok 2026 - Cantores Minores – Álmomban énekeltem", "time": "17:00", "url": "https://toldimozi.hu/filmek/finn-filmnapok-2026-cantores-minores-almomban-enekeltem", "cinema": "Toldi", "date": "2026-02-22", "day_short": "V", "day_long": "Vasárnap"}, {"film": "Finn Filmnapok 2026 - Nem vagy egyedül", "time": "18:00", "url": "https://toldimozi.hu/filmek/finn-filmnapok-2026-nem-vagy-egyedul", "cinema": "Toldi", "date": "2026-02-22", "day_short": "V", "day_long": "Vasárnap"}, {"film": "Finn Filmnapok 2026 - Orenda", "time": "20:00", "url": "https://toldimozi.hu/filmek/finn-filmnapok-2026-orenda", "cinema": "Toldi", "date": "2026-02-22", "day_short": "V", "day_long": "Vasárnap"}, {"film": "Finn Filmnapok 2026 - Vasárnapi rövidfilmek", "time": "16:00", "url": "https://toldimozi.hu/filmek/finn-filmnapok-2026-vasarnapi-rovidfilmek", "cinema": "Toldi", "date": "2026-02-22", "day_short": "V", "day_long": "Vasárnap"}, {"film": "Beléd estem", "time": "14:00", "url": "https://corvinmozi.hu/filmek/beled-estem", "cinema": "Corvin", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "Beléd estem", "time": "17:15", "url": "https://corvinmozi.hu/filmek/beled-estem", "cinema": "Corvin", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "Beléd estem", "time": "20:30", "url": "https://corvinmozi.hu/filmek/beled-estem", "cinema": "Corvin", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "Hívatlanok - Utolsó fejezet", "time": "21:15", "url": "https://corvinmozi.hu/filmek/hivatlanok-utolso-fejezet", "cinema": "Corvin", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "Üvöltő szelek", "time": "16:15", "url": "https://corvinmozi.hu/filmek/uvolto-szelek", "cinema": "Corvin", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "Üvöltő szelek", "time": "17:45", "url": "https://corvinmozi.hu/filmek/uvolto-szelek", "cinema": "Corvin", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "Üvöltő szelek", "time": "19:00", "url": "https://corvinmozi.hu/filmek/uvolto-szelek", "cinema": "Corvin", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "Üvöltő szelek", "time": "21:30", "url": "https://corvinmozi.hu/filmek/uvolto-szelek", "cinema": "Corvin", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "A megmentő", "time": "20:45", "url": "https://corvinmozi.hu/filmek/megmento", "cinema": "Corvin", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "Csendes barát", "time": "15:00", "url": "https://corvinmozi.hu/filmek/csendes-barat", "cinema": "Corvin", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "Csendes barát", "time": "18:00", "url": "https://corvinmozi.hu/filmek/csendes-barat", "cinema": "Corvin", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "Father Mother Sister Brother", "time": "21:00", "url": "https://corvinmozi.hu/filmek/father-mother-sister-brother", "cinema": "Corvin", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "Hamnet", "time": "15:45", "url": "https://corvinmozi.hu/filmek/hamnet", "cinema": "Corvin", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "Hamnet", "time": "18:15", "url": "https://corvinmozi.hu/filmek/hamnet", "cinema": "Corvin", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "Magyar menyegző", "time": "15:15", "url": "https://corvinmozi.hu/filmek/magyar-menyegzo", "cinema": "Corvin", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "Magyar menyegző", "time": "19:15", "url": "https://corvinmozi.hu/filmek/magyar-menyegzo", "cinema": "Corvin", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "Marty Supreme", "time": "14:30", "url": "https://corvinmozi.hu/filmek/marty-supreme", "cinema": "Corvin", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "Marty Supreme", "time": "17:30", "url": "https://corvinmozi.hu/filmek/marty-supreme", "cinema": "Corvin", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "Marty Supreme", "time": "20:30", "url": "https://corvinmozi.hu/filmek/marty-supreme", "cinema": "Corvin", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "The Housemaid – A téboly otthona", "time": "14:45", "url": "https://corvinmozi.hu/filmek/housemaid-teboly-otthona", "cinema": "Corvin", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "CineKorda bemutatja: Lopakodó lelkek", "time": "19:00", "url": "https://corvinmozi.hu/filmek/cinekorda-bemutatja-lopakodo-lelkek", "cinema": "Corvin", "date": "2026-02-20", "day_short": "P", "day_long": "Péntek"}];
+const genres = {"Alpha": ["dráma"], "Beléd estem": ["romantikus filmvígjáték"], "A tenger útja": ["dráma"], "Bérelt család": ["vígjáték"], "Csendes barát": ["játékfilm"], "Dögölj meg szerelmem": ["thriller", "filmdráma", "vígjáték"], "Érzelmi érték": ["vígjáték", "filmdráma"], "Father Mother Sister Brother": [], "Filmrendezők klubja – Kardos Ferenc – Rózsa János: Gyerekbetegségek": ["vígjáték"], "Hamnet": ["filmdráma"], "Marty Supreme": ["dráma", "sport"], "Melania": ["dokumentumfilm"], "Nincs más választás": ["fekete komédia"], "Nürnberg": ["Történelmi film"], "Az utolsó viking": ["vígjáték"], "Bugonia": ["vígjáték", "sci-fi"], "Csak egy baleset": ["dráma"], "Filmterápia Est: Ha tudnék, beléd rúgnék": ["dráma thriller vígjáték"], "Üvöltő szelek": ["romantikus dráma"], "Dalai Láma – A boldogság tanítása": ["dokumentumfilm"], "Egybenyíló szobák": ["filmdráma"], "Fiume vagy halál!": ["dokumentumfilm"], "Josef Mengele eltűnése": ["Történelmi dráma"], "Magyar menyegző": ["táncfilm"], "Minden csillag": ["filmdráma"], "Ernest és Célestine – A dallamok útján": ["animációs film"], "Nefelejcs Bábszínház - Boribon cicája": [], "Finn Filmnapok 2026 - Soha ki nem alvó fény": ["dráma"], "Finn Filmnapok 2026 - Egy őrült nyár": ["dráma", "vígjáték"], "Finn Filmnapok 2026 - A jövő képkockái - Finn filmes diákok alkotásai": [], "Finn Filmnapok 2026 - Almatolvajok": ["dráma", "vígjáték"], "Finn Filmnapok 2026 - Napok tele csodával": ["dokumentumfilm"], "Finn Filmnapok 2026 - Sörben az igazság": ["dráma", "vígjáték"], "Finn Filmnapok 2026 - A 6-os kupé": ["dráma"], "Finn Filmnapok 2026 - Égő föld – Leckék a tűzről": ["dokumentumfilm"], "Finn Filmnapok 2026 - Menekülés Mikulásországból": ["dokumentumfilm"], "Finn Filmnapok 2026 - FinnAgora x Aurora Klímakert: panelbeszélgetés": [], "Finn Filmnapok 2026 - Rövidfilmvetítés: Monumentális Mozgalom": [], "Finn Filmnapok 2026 - Cantores Minores – Álmomban énekeltem": ["dokumentumfilm"], "Finn Filmnapok 2026 - Nem vagy egyedül": ["dráma"], "Finn Filmnapok 2026 - Orenda": ["dráma"], "Finn Filmnapok 2026 - Vasárnapi rövidfilmek": ["rövidfilm"], "Hívatlanok - Utolsó fejezet": ["horror"], "A megmentő": ["akciófilm"], "The Housemaid – A téboly otthona": ["thriller"], "CineKorda bemutatja: Lopakodó lelkek": ["dráma"]};
+const days = [{"date": "2026-02-16", "short": "H", "label": "H feb.16."}, {"date": "2026-02-17", "short": "K", "label": "K feb.17."}, {"date": "2026-02-18", "short": "Sze", "label": "Sze feb.18."}, {"date": "2026-02-19", "short": "Cs", "label": "Cs feb.19."}, {"date": "2026-02-20", "short": "P", "label": "P feb.20."}, {"date": "2026-02-21", "short": "Szo", "label": "Szo feb.21."}, {"date": "2026-02-22", "short": "V", "label": "V feb.22."}];
+const allGenres = ["akciófilm", "animációs film", "dokumentumfilm", "dráma", "dráma thriller vígjáték", "fekete komédia", "filmdráma", "horror", "játékfilm", "romantikus dráma", "romantikus filmvígjáték", "rövidfilm", "sci-fi", "sport", "thriller", "táncfilm", "Történelmi dráma", "Történelmi film", "vígjáték"];
+
+let activeCinema = 'all';
+let activeDay = 'all';
+let activeGenre = 'all';
+
+// Nap gombok
+const dayFilters = document.getElementById('day-filters');
+days.forEach(d => {
+  const btn = document.createElement('button');
+  btn.className = 'filter-btn day-btn';
+  btn.dataset.day = d.date;
+  btn.textContent = d.label;
+  dayFilters.appendChild(btn);
+});
+
+// Műfaj gombok
+const genreFilters = document.getElementById('genre-filters');
+allGenres.forEach(g => {
+  const btn = document.createElement('button');
+  btn.className = 'filter-btn genre-btn';
+  btn.dataset.genre = g;
+  btn.textContent = g;
+  genreFilters.appendChild(btn);
+});
+
+// Filter kattintások
+function setupFilters(selector, varSetter) {
+  document.querySelectorAll(selector).forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll(selector).forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      varSetter(btn);
+      render();
+    });
+  });
+}
+setupFilters('.cinema-btn', btn => activeCinema = btn.dataset.cinema);
+setupFilters('.day-btn', btn => activeDay = btn.dataset.day);
+setupFilters('.genre-btn', btn => activeGenre = btn.dataset.genre);
+
+function render() {
+  const filtered = screenings.filter(s => {
+    if (activeCinema !== 'all' && s.cinema !== activeCinema) return false;
+    if (activeDay !== 'all' && s.date !== activeDay) return false;
+    if (activeGenre !== 'all') {
+      const fg = genres[s.film] || [];
+      if (!fg.includes(activeGenre)) return false;
+    }
+    return true;
+  });
+
+  // Csoportosítás film szerint
+  const films = {};
+  filtered.forEach(s => {
+    if (!films[s.film]) films[s.film] = { url: s.url, cinemas: {}, count: 0 };
+    films[s.film].count++;
+    if (!films[s.film].cinemas[s.cinema]) films[s.film].cinemas[s.cinema] = [];
+    films[s.film].cinemas[s.cinema].push({ day: s.day_short, time: s.time, date: s.date });
+  });
+
+  const content = document.getElementById('content');
+
+  // Rendezés: legtöbb vetítés elől
+  const filmNames = Object.keys(films).sort((a, b) => films[b].count - films[a].count || a.localeCompare(b, 'hu'));
+
+  if (filmNames.length === 0) {
+    content.innerHTML = '<div class="empty"><div class="emoji">🎬</div>Nincs vetítés a szűrésnek megfelelően.</div>';
+    document.getElementById('stats').textContent = '';
+    return;
+  }
+
+  const cinemaOrder = ['Művész', 'Puskin', 'Toldi', 'Corvin'];
+  const cinemaClass = { 'Művész': 'muvesz', 'Puskin': 'puskin', 'Toldi': 'toldi', 'Corvin': 'corvin' };
+
+  let html = '';
+  filmNames.forEach(film => {
+    const info = films[film];
+    let filmUrl = info.url || '';
+    if (filmUrl && !filmUrl.startsWith('http')) filmUrl = 'https://artmozi.hu' + filmUrl;
+    const filmGenres = genres[film] || [];
+
+    html += '<div class="film-card"><div class="film-header"><div class="film-title">';
+    if (filmUrl) html += '<a href="' + filmUrl + '" target="_blank">';
+    html += film;
+    if (filmUrl) html += ' ↗</a>';
+    html += '</div>';
+    html += '<span class="film-count">' + info.count + ' vetítés</span>';
+    html += '</div>';
+
+    if (filmGenres.length) {
+      html += '<div class="film-genres">';
+      filmGenres.forEach(g => { html += '<span class="genre-tag">' + g + '</span>'; });
+      html += '</div>';
+    }
+
+    html += '<div class="film-screenings">';
+    cinemaOrder.forEach(cinema => {
+      if (!info.cinemas[cinema]) return;
+      const times = info.cinemas[cinema];
+      html += '<div class="cinema-row">';
+      html += '<span class="cinema-name ' + cinemaClass[cinema] + '">' + cinema + '</span>';
+      html += '<div>';
+      times.forEach(t => {
+        html += '<span class="day-label">' + t.day + '</span>';
+        html += '<span class="time-chip">' + t.time + '</span> ';
+      });
+      html += '</div></div>';
+    });
+
+    html += '</div></div>';
+  });
+
+  content.innerHTML = html;
+  document.getElementById('stats').textContent = filmNames.length + ' film · ' + filtered.length + ' vetítés';
+}
+
+render();
+</script>
+</body>
+</html>
