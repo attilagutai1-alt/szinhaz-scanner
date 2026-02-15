@@ -81,12 +81,6 @@ body {
 .cinema-btn[data-cinema="Toldi"].active { background: #EB7126; border-color: #EB7126; color: #fff; }
 .cinema-btn[data-cinema="Corvin"].active { background: #e54545; border-color: #e54545; color: #fff; }
 
-.genre-btn.active {
-  background: #c084fc;
-  border-color: #c084fc;
-  color: #0a0a0a;
-}
-
 .content {
   padding: 1.5rem;
   max-width: 900px;
@@ -217,26 +211,18 @@ body {
       <button class="filter-btn day-btn active" data-day="all">Mind</button>
     </div>
   </div>
-  <div class="filter-section">
-    <div class="filter-label">Műfaj</div>
-    <div class="filter-row" id="genre-filters">
-      <button class="filter-btn genre-btn active" data-genre="all">Mind</button>
-    </div>
-  </div>
 </div>
 
 <div class="content" id="content"></div>
 <div class="stats" id="stats"></div>
 
 <script>
-const screenings = [{"film": "Üvöltő szelek", "time": "15:00", "url": "/filmek/uvolto-szelek", "cinema": "Puskin", "date": "2026-02-16", "day_short": "H", "day_long": "Hétfő"}, {"film": "Üvöltő szelek", "time": "17:30", "url": "/filmek/uvolto-szelek", "cinema": "Toldi", "date": "2026-02-16", "day_short": "H", "day_long": "Hétfő"}, {"film": "Üvöltő szelek", "time": "17:45", "url": "/filmek/uvolto-szelek", "cinema": "Toldi", "date": "2026-02-17", "day_short": "K", "day_long": "Kedd"}, {"film": "Üvöltő szelek", "time": "19:00", "url": "/filmek/uvolto-szelek", "cinema": "Corvin", "date": "2026-02-18", "day_short": "Sze", "day_long": "Szerda"}, {"film": "Üvöltő szelek", "time": "20:30", "url": "/filmek/uvolto-szelek", "cinema": "Művész", "date": "2026-02-19", "day_short": "Cs", "day_long": "Csütörtök"}, {"film": "Üvöltő szelek", "time": "18:00", "url": "/filmek/uvolto-szelek", "cinema": "Corvin", "date": "2026-02-21", "day_short": "Szo", "day_long": "Szombat"}, {"film": "Beléd estem", "time": "13:30", "url": "/filmek/beled-estem", "cinema": "Művész", "date": "2026-02-16", "day_short": "H", "day_long": "Hétfő"}, {"film": "Beléd estem", "time": "17:45", "url": "/filmek/beled-estem", "cinema": "Toldi", "date": "2026-02-16", "day_short": "H", "day_long": "Hétfő"}, {"film": "Beléd estem", "time": "18:00", "url": "/filmek/beled-estem", "cinema": "Puskin", "date": "2026-02-17", "day_short": "K", "day_long": "Kedd"}, {"film": "Beléd estem", "time": "18:30", "url": "/filmek/beled-estem", "cinema": "Művész", "date": "2026-02-20", "day_short": "P", "day_long": "Péntek"}, {"film": "Alpha", "time": "21:00", "url": "/filmek/alpha", "cinema": "Művész", "date": "2026-02-17", "day_short": "K", "day_long": "Kedd"}, {"film": "Alpha", "time": "19:30", "url": "/filmek/alpha", "cinema": "Corvin", "date": "2026-02-20", "day_short": "P", "day_long": "Péntek"}, {"film": "Marty Supreme", "time": "15:15", "url": "/filmek/marty-supreme", "cinema": "Művész", "date": "2026-02-22", "day_short": "V", "day_long": "Vasárnap"}];
-const genres = {"Üvöltő szelek": ["filmdráma", "romantikus"], "Beléd estem": ["vígjáték", "romantikus"], "Alpha": ["thriller", "filmdráma"], "Marty Supreme": ["életrajzi", "filmdráma"]};
+const screenings = [{"film": "Üvöltő szelek", "time": "17:45", "url": "/filmek/uvolto-szelek", "cinema": "Toldi", "date": "2026-02-16", "day_short": "H", "day_long": "Hétfő"}, {"film": "Alpha", "time": "21:00", "url": "/filmek/alpha", "cinema": "Művész", "date": "2026-02-17", "day_short": "K", "day_long": "Kedd"}];
+const genres = {"Üvöltő szelek": ["filmdráma", "romantikus"], "Alpha": ["thriller"]};
 const days = [{"date": "2026-02-16", "short": "H", "label": "H feb.16."}, {"date": "2026-02-17", "short": "K", "label": "K feb.17."}, {"date": "2026-02-18", "short": "Sze", "label": "Sze feb.18."}, {"date": "2026-02-19", "short": "Cs", "label": "Cs feb.19."}, {"date": "2026-02-20", "short": "P", "label": "P feb.20."}, {"date": "2026-02-21", "short": "Szo", "label": "Szo feb.21."}, {"date": "2026-02-22", "short": "V", "label": "V feb.22."}];
-const allGenres = ["filmdráma", "romantikus", "thriller", "vígjáték", "életrajzi"];
 
 let activeCinema = 'all';
 let activeDay = 'all';
-let activeGenre = 'all';
 
 // Nap gombok
 const dayFilters = document.getElementById('day-filters');
@@ -246,16 +232,6 @@ days.forEach(d => {
   btn.dataset.day = d.date;
   btn.textContent = d.label;
   dayFilters.appendChild(btn);
-});
-
-// Műfaj gombok
-const genreFilters = document.getElementById('genre-filters');
-allGenres.forEach(g => {
-  const btn = document.createElement('button');
-  btn.className = 'filter-btn genre-btn';
-  btn.dataset.genre = g;
-  btn.textContent = g;
-  genreFilters.appendChild(btn);
 });
 
 // Filter kattintások
@@ -271,16 +247,11 @@ function setupFilters(selector, varSetter) {
 }
 setupFilters('.cinema-btn', btn => activeCinema = btn.dataset.cinema);
 setupFilters('.day-btn', btn => activeDay = btn.dataset.day);
-setupFilters('.genre-btn', btn => activeGenre = btn.dataset.genre);
 
 function render() {
   const filtered = screenings.filter(s => {
     if (activeCinema !== 'all' && s.cinema !== activeCinema) return false;
     if (activeDay !== 'all' && s.date !== activeDay) return false;
-    if (activeGenre !== 'all') {
-      const fg = genres[s.film] || [];
-      if (!fg.includes(activeGenre)) return false;
-    }
     return true;
   });
 

@@ -265,10 +265,6 @@ def generate_html(all_screenings: list, genres: dict, monday: date, sunday: date
         })
     days_json = json.dumps(days, ensure_ascii=False)
 
-    # Összegyűjtjük az összes műfajt a filter gombokhoz
-    all_genres = sorted(set(g for gl in genres.values() for g in gl), key=str.lower)
-    all_genres_json = json.dumps(all_genres, ensure_ascii=False)
-
     html = f"""<!DOCTYPE html>
 <html lang="hu">
 <head>
@@ -351,12 +347,6 @@ body {{
 .cinema-btn[data-cinema="Puskin"].active {{ background: #FFD451; border-color: #FFD451; color: #0a0a0a; }}
 .cinema-btn[data-cinema="Toldi"].active {{ background: #EB7126; border-color: #EB7126; color: #fff; }}
 .cinema-btn[data-cinema="Corvin"].active {{ background: #e54545; border-color: #e54545; color: #fff; }}
-
-.genre-btn.active {{
-  background: #c084fc;
-  border-color: #c084fc;
-  color: #0a0a0a;
-}}
 
 .content {{
   padding: 1.5rem;
@@ -488,12 +478,6 @@ body {{
       <button class="filter-btn day-btn active" data-day="all">Mind</button>
     </div>
   </div>
-  <div class="filter-section">
-    <div class="filter-label">Műfaj</div>
-    <div class="filter-row" id="genre-filters">
-      <button class="filter-btn genre-btn active" data-genre="all">Mind</button>
-    </div>
-  </div>
 </div>
 
 <div class="content" id="content"></div>
@@ -503,11 +487,9 @@ body {{
 const screenings = {screenings_json};
 const genres = {genres_json};
 const days = {days_json};
-const allGenres = {all_genres_json};
 
 let activeCinema = 'all';
 let activeDay = 'all';
-let activeGenre = 'all';
 
 // Nap gombok
 const dayFilters = document.getElementById('day-filters');
@@ -517,16 +499,6 @@ days.forEach(d => {{
   btn.dataset.day = d.date;
   btn.textContent = d.label;
   dayFilters.appendChild(btn);
-}});
-
-// Műfaj gombok
-const genreFilters = document.getElementById('genre-filters');
-allGenres.forEach(g => {{
-  const btn = document.createElement('button');
-  btn.className = 'filter-btn genre-btn';
-  btn.dataset.genre = g;
-  btn.textContent = g;
-  genreFilters.appendChild(btn);
 }});
 
 // Filter kattintások
@@ -542,16 +514,11 @@ function setupFilters(selector, varSetter) {{
 }}
 setupFilters('.cinema-btn', btn => activeCinema = btn.dataset.cinema);
 setupFilters('.day-btn', btn => activeDay = btn.dataset.day);
-setupFilters('.genre-btn', btn => activeGenre = btn.dataset.genre);
 
 function render() {{
   const filtered = screenings.filter(s => {{
     if (activeCinema !== 'all' && s.cinema !== activeCinema) return false;
     if (activeDay !== 'all' && s.date !== activeDay) return false;
-    if (activeGenre !== 'all') {{
-      const fg = genres[s.film] || [];
-      if (!fg.includes(activeGenre)) return false;
-    }}
     return true;
   }});
 
