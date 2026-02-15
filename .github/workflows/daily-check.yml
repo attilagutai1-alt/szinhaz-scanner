@@ -1,36 +1,31 @@
 name: Színház scraper - napi ellenőrzés
-
 on:
   schedule:
     - cron: "1 1 * * *"
   workflow_dispatch:       # Kézi indítás
-
 jobs:
   run:
     runs-on: ubuntu-latest
-
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           python -m playwright install --with-deps chromium
-
       - name: Run scrapers
         env:
           SMTP_USER: ${{ secrets.SMTP_USER }}
           SMTP_PASS: ${{ secrets.SMTP_PASS }}
           TO_EMAILS: ${{ secrets.TO_EMAILS }}
         run: python main.py
-
       - name: Upload debug screenshots
         if: always()
         uses: actions/upload-artifact@v4
@@ -39,7 +34,6 @@ jobs:
           path: |
             debug_*.png
           if-no-files-found: ignore
-
       - name: Commit state files
         if: success()
         run: |
@@ -48,3 +42,9 @@ jobs:
           git add state.json orkeny_state.json radnoti_state.json pbest_state.json vig_state.json || true
           git diff --staged --quiet || git commit -m "Update state [skip ci]"
           git push || true
+
+
+
+
+
+
