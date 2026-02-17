@@ -1,15 +1,7 @@
 {
   "latest_date": "2026-04-30",
-  "event_count": 151,
+  "event_count": 149,
   "events": [
-    [
-      "2026-02-16",
-      "Magányos emberek   ELFOGYOTT"
-    ],
-    [
-      "2026-02-16",
-      "Sorstalanság   ELFOGYOTT"
-    ],
     [
       "2026-02-17",
       "Cigány Mózes   ELFOGYOTT"
@@ -20,7 +12,7 @@
     ],
     [
       "2026-02-17",
-      "Halál Velencében"
+      "Halál Velencében   ELFOGYOTT"
     ],
     [
       "2026-02-18",
@@ -100,7 +92,7 @@
     ],
     [
       "2026-02-27",
-      "Rókonok"
+      "Rókonok   ELFOGYOTT"
     ],
     [
       "2026-02-28",
@@ -124,7 +116,7 @@
     ],
     [
       "2026-03-01",
-      "KOMOLYAN RÖHEJES VAGYOK"
+      "KOMOLYAN RÖHEJES VAGYOK   ELFOGYOTT"
     ],
     [
       "2026-03-02",
@@ -192,7 +184,7 @@
     ],
     [
       "2026-03-11",
-      "Mesteremberek"
+      "Mesteremberek   ELFOGYOTT"
     ],
     [
       "2026-03-12",
@@ -264,7 +256,7 @@
     ],
     [
       "2026-03-19",
-      "A bajnok   ELFOGYOTT"
+      "A bajnok"
     ],
     [
       "2026-03-19",
@@ -336,7 +328,7 @@
     ],
     [
       "2026-03-27",
-      "Mesteremberek   ELFOGYOTT"
+      "Mesteremberek"
     ],
     [
       "2026-03-27",
@@ -348,7 +340,7 @@
     ],
     [
       "2026-03-28",
-      "némacsend"
+      "némacsend   ELFOGYOTT"
     ],
     [
       "2026-03-29",
@@ -384,7 +376,7 @@
     ],
     [
       "2026-04-01",
-      "Mester és Margarita   NEM ELÉRHETŐ"
+      "Mester és Margarita"
     ],
     [
       "2026-04-02",
@@ -392,27 +384,27 @@
     ],
     [
       "2026-04-02",
-      "Octogon   NEM ELÉRHETŐ"
+      "Octogon   ELFOGYOTT"
     ],
     [
       "2026-04-02",
-      "némacsend   NEM ELÉRHETŐ"
+      "némacsend"
     ],
     [
       "2026-04-03",
-      "Magányos emberek   NEM ELÉRHETŐ"
+      "Magányos emberek"
     ],
     [
       "2026-04-03",
-      "Médeia   NEM ELÉRHETŐ"
+      "Médeia"
     ],
     [
       "2026-04-04",
-      "2031   NEM ELÉRHETŐ"
+      "2031   ELFOGYOTT"
     ],
     [
       "2026-04-04",
-      "Egy nyár   NEM ELÉRHETŐ"
+      "Egy nyár"
     ],
     [
       "2026-04-06",
@@ -420,55 +412,55 @@
     ],
     [
       "2026-04-06",
-      "Octogon   NEM ELÉRHETŐ"
+      "Octogon   ELFOGYOTT"
     ],
     [
       "2026-04-06",
-      "némacsend   NEM ELÉRHETŐ"
+      "némacsend"
     ],
     [
       "2026-04-07",
-      "Egy komcsi nyanya vagyok   NEM ELÉRHETŐ"
+      "Egy komcsi nyanya vagyok"
     ],
     [
       "2026-04-07",
-      "Isten, haza, család   NEM ELÉRHETŐ"
+      "Isten, haza, család"
     ],
     [
       "2026-04-08",
-      "Főtitkárok   NEM ELÉRHETŐ"
+      "Főtitkárok"
     ],
     [
       "2026-04-09",
-      "A Halál kilovagolt Perzsiából   NEM ELÉRHETŐ"
+      "A Halál kilovagolt Perzsiából"
     ],
     [
       "2026-04-09",
-      "Dante: Pokol   NEM ELÉRHETŐ"
+      "Dante: Pokol"
     ],
     [
       "2026-04-09",
-      "Nyílt tárgyalás   NEM ELÉRHETŐ"
+      "Nyílt tárgyalás"
     ],
     [
       "2026-04-10",
-      "Káli holtak   NEM ELÉRHETŐ"
+      "Káli holtak   ELFOGYOTT"
     ],
     [
       "2026-04-10",
-      "Mesteremberek   NEM ELÉRHETŐ"
+      "Mesteremberek"
     ],
     [
       "2026-04-10",
-      "Sorstalanság   NEM ELÉRHETŐ"
+      "Sorstalanság"
     ],
     [
       "2026-04-11",
-      "Extázis   NEM ELÉRHETŐ"
+      "Extázis"
     ],
     [
       "2026-04-11",
-      "Pekingi ősz   NEM ELÉRHETŐ"
+      "Pekingi ősz"
     ],
     [
       "2026-04-11",
@@ -476,15 +468,15 @@
     ],
     [
       "2026-04-12",
-      "Itt élet   NEM ELÉRHETŐ"
+      "Itt élet"
     ],
     [
       "2026-04-12",
-      "KOMOLYAN RÖHEJES VAGYOK   NEM ELÉRHETŐ"
+      "KOMOLYAN RÖHEJES VAGYOK"
     ],
     [
       "2026-04-12",
-      "Megrág, kiköp   NEM ELÉRHETŐ"
+      "Megrág, kiköp"
     ],
     [
       "2026-04-13",
@@ -492,7 +484,7 @@
     ],
     [
       "2026-04-13",
-      "Mester és Margarita   NEM ELÉRHETŐ"
+      "Mester és Margarita"
     ],
     [
       "2026-04-14",
@@ -500,35 +492,35 @@
     ],
     [
       "2026-04-14",
-      "Mester és Margarita   NEM ELÉRHETŐ"
+      "Mester és Margarita"
     ],
     [
       "2026-04-15",
-      "EMBTRAG   NEM ELÉRHETŐ"
+      "EMBTRAG"
     ],
     [
       "2026-04-15",
-      "Saját [?] szoba   NEM ELÉRHETŐ"
+      "Saját [?] szoba"
     ],
     [
       "2026-04-16",
-      "A Halál kilovagolt Perzsiából   NEM ELÉRHETŐ"
+      "A Halál kilovagolt Perzsiából"
     ],
     [
       "2026-04-16",
-      "Cigány Mózes   NEM ELÉRHETŐ"
+      "Cigány Mózes"
     ],
     [
       "2026-04-16",
-      "Nyílt tárgyalás   NEM ELÉRHETŐ"
+      "Nyílt tárgyalás"
     ],
     [
       "2026-04-17",
-      "A zseni   NEM ELÉRHETŐ"
+      "A zseni"
     ],
     [
       "2026-04-17",
-      "Hedda Gabler   NEM ELÉRHETŐ"
+      "Hedda Gabler"
     ],
     [
       "2026-04-17",
@@ -544,7 +536,7 @@
     ],
     [
       "2026-04-24",
-      "Rekviem   NEM ELÉRHETŐ"
+      "Rekviem"
     ],
     [
       "2026-04-25",
@@ -556,7 +548,7 @@
     ],
     [
       "2026-04-25",
-      "Rekviem   NEM ELÉRHETŐ"
+      "Rekviem"
     ],
     [
       "2026-04-26",
@@ -568,7 +560,7 @@
     ],
     [
       "2026-04-26",
-      "Rekviem   NEM ELÉRHETŐ"
+      "Rekviem"
     ],
     [
       "2026-04-28",
@@ -576,11 +568,11 @@
     ],
     [
       "2026-04-28",
-      "Dante: Purgatórium - Paradicsom   NEM ELÉRHETŐ"
+      "Dante: Purgatórium - Paradicsom"
     ],
     [
       "2026-04-28",
-      "Mester és Margarita   NEM ELÉRHETŐ"
+      "Mester és Margarita"
     ],
     [
       "2026-04-29",
@@ -592,7 +584,7 @@
     ],
     [
       "2026-04-29",
-      "Rekviem   NEM ELÉRHETŐ"
+      "Rekviem"
     ],
     [
       "2026-04-30",
@@ -600,13 +592,13 @@
     ],
     [
       "2026-04-30",
-      "Octogon   NEM ELÉRHETŐ"
+      "Octogon   ELFOGYOTT"
     ],
     [
       "2026-04-30",
-      "némacsend   NEM ELÉRHETŐ"
+      "némacsend"
     ]
   ],
   "last_page": 8,
-  "checked_at_budapest": "2026-02-16T04:41:57.132535+01:00"
+  "checked_at_budapest": "2026-02-17T04:35:42.490549+01:00"
 }
