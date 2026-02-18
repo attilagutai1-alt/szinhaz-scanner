@@ -1,15 +1,7 @@
 {
   "latest_date": "2026-05-05",
-  "event_count": 125,
+  "event_count": 123,
   "events": [
-    [
-      "2026-02-17",
-      "Solness"
-    ],
-    [
-      "2026-02-17",
-      "Édes Anna"
-    ],
     [
       "2026-02-18",
       "A Darvas"
@@ -503,5 +495,5 @@
       "Trójában nem lesz háború"
     ]
   ],
-  "checked_at_budapest": "2026-02-17T04:41:41.192819+01:00"
+  "checked_at_budapest": "2026-02-18T04:43:43.532816+01:00"
 }
