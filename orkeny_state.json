@@ -1,15 +1,7 @@
 {
   "latest_date": "2026-05-05",
-  "event_count": 123,
+  "event_count": 121,
   "events": [
-    [
-      "2026-02-18",
-      "A Darvas"
-    ],
-    [
-      "2026-02-18",
-      "Lidércek, Shaxpeare, Delírium"
-    ],
     [
       "2026-02-19",
       "A Darvas"
@@ -495,5 +487,5 @@
       "Trójában nem lesz háború"
     ]
   ],
-  "checked_at_budapest": "2026-02-18T04:43:43.532816+01:00"
+  "checked_at_budapest": "2026-02-19T04:42:39.902089+01:00"
 }

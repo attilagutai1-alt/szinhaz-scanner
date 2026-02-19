@@ -1,27 +1,7 @@
 {
   "latest_date": "2026-04-26",
-  "event_count": 66,
+  "event_count": 61,
   "events": [
-    [
-      "2026-02-18",
-      "A Rendes Lanyok Csendben Sirnak"
-    ],
-    [
-      "2026-02-18",
-      "A rendes lányok csendben sírnak"
-    ],
-    [
-      "2026-02-18",
-      "Toldi"
-    ],
-    [
-      "2026-02-18",
-      "Tortenetek A Konyhambol Avagy Barbara Stand Up"
-    ],
-    [
-      "2026-02-18",
-      "Történetek a konyhámból, avagy Barbara, stand up!"
-    ],
     [
       "2026-02-19",
       "Az Elet Mint Olyan"
@@ -267,5 +247,5 @@
       "Varom Valaszat Pa"
     ]
   ],
-  "checked_at_budapest": "2026-02-18T04:50:51.539066+01:00"
+  "checked_at_budapest": "2026-02-19T04:49:47.801465+01:00"
 }

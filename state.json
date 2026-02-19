@@ -1,14 +1,10 @@
 {
   "latest_date": "2026-04-30",
-  "event_count": 143,
+  "event_count": 142,
   "events": [
     [
-      "2026-02-18",
-      "EMBTRAG"
-    ],
-    [
       "2026-02-19",
-      "2031   ELFOGYOTT"
+      "2031"
     ],
     [
       "2026-02-19",
@@ -40,7 +36,7 @@
     ],
     [
       "2026-02-22",
-      "A bajnok   ELFOGYOTT"
+      "A bajnok"
     ],
     [
       "2026-02-22",
@@ -56,7 +52,7 @@
     ],
     [
       "2026-02-24",
-      "Itt élet   ELFOGYOTT"
+      "Itt élet"
     ],
     [
       "2026-02-24",
@@ -64,7 +60,7 @@
     ],
     [
       "2026-02-25",
-      "Extázis   ELFOGYOTT"
+      "Extázis"
     ],
     [
       "2026-02-25",
@@ -176,7 +172,7 @@
     ],
     [
       "2026-03-12",
-      "Itt élet"
+      "Itt élet   ELFOGYOTT"
     ],
     [
       "2026-03-12",
@@ -192,7 +188,7 @@
     ],
     [
       "2026-03-13",
-      "Pekingi ősz   ELFOGYOTT"
+      "Pekingi ősz"
     ],
     [
       "2026-03-14",
@@ -472,7 +468,7 @@
     ],
     [
       "2026-04-13",
-      "Mester és Margarita"
+      "Mester és Margarita   ELFOGYOTT"
     ],
     [
       "2026-04-14",
@@ -480,7 +476,7 @@
     ],
     [
       "2026-04-14",
-      "Mester és Margarita"
+      "Mester és Margarita   ELFOGYOTT"
     ],
     [
       "2026-04-15",
@@ -512,7 +508,7 @@
     ],
     [
       "2026-04-17",
-      "Sárszeg"
+      "Sárszeg   ELFOGYOTT"
     ],
     [
       "2026-04-23",
@@ -528,11 +524,11 @@
     ],
     [
       "2026-04-25",
-      "Az üvegház"
+      "Az üvegház   ELFOGYOTT"
     ],
     [
       "2026-04-25",
-      "Rekviem   ELFOGYOTT"
+      "Rekviem"
     ],
     [
       "2026-04-26",
@@ -576,5 +572,5 @@
     ]
   ],
   "last_page": 8,
-  "checked_at_budapest": "2026-02-18T04:37:49.555037+01:00"
+  "checked_at_budapest": "2026-02-19T04:36:51.077419+01:00"
 }
