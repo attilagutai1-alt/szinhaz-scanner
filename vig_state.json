@@ -1,31 +1,7 @@
 {
   "latest_date": "2026-04-26",
-  "event_count": 61,
+  "event_count": 55,
   "events": [
-    [
-      "2026-02-19",
-      "Az Elet Mint Olyan"
-    ],
-    [
-      "2026-02-19",
-      "Az élet mint olyan"
-    ],
-    [
-      "2026-02-19",
-      "Lesz Ami Lesz"
-    ],
-    [
-      "2026-02-19",
-      "Lesz, ami lesz"
-    ],
-    [
-      "2026-02-19",
-      "Nyilt Muhely 1"
-    ],
-    [
-      "2026-02-19",
-      "VígPro"
-    ],
     [
       "2026-02-20",
       "Mondjad Atikam"
@@ -247,5 +223,5 @@
       "Varom Valaszat Pa"
     ]
   ],
-  "checked_at_budapest": "2026-02-19T04:49:47.801465+01:00"
+  "checked_at_budapest": "2026-02-20T04:45:41.875407+01:00"
 }
