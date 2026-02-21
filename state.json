@@ -1,19 +1,7 @@
 {
   "latest_date": "2026-04-30",
-  "event_count": 142,
+  "event_count": 139,
   "events": [
-    [
-      "2026-02-20",
-      "A szépség meggyilkolása"
-    ],
-    [
-      "2026-02-20",
-      "Isten, haza, család"
-    ],
-    [
-      "2026-02-20",
-      "Sárszeg"
-    ],
     [
       "2026-02-21",
       "Sárszeg"
@@ -571,6 +559,6 @@
       "némacsend"
     ]
   ],
-  "last_page": 8,
-  "checked_at_budapest": "2026-02-20T04:32:44.768168+01:00"
+  "last_page": 7,
+  "checked_at_budapest": "2026-02-21T04:23:37.451608+01:00"
 }

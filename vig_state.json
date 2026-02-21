@@ -1,23 +1,7 @@
 {
   "latest_date": "2026-04-26",
-  "event_count": 55,
+  "event_count": 51,
   "events": [
-    [
-      "2026-02-20",
-      "Mondjad Atikam"
-    ],
-    [
-      "2026-02-20",
-      "Mondjad, Atikám!"
-    ],
-    [
-      "2026-02-20",
-      "Szulofalum Pest"
-    ],
-    [
-      "2026-02-20",
-      "Szülőfalum, Pest"
-    ],
     [
       "2026-02-21",
       "Frankenstein A Modern Prometheusz"
@@ -223,5 +207,5 @@
       "Varom Valaszat Pa"
     ]
   ],
-  "checked_at_budapest": "2026-02-20T04:45:41.875407+01:00"
+  "checked_at_budapest": "2026-02-21T04:36:26.693798+01:00"
 }

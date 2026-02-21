@@ -1,15 +1,7 @@
 {
   "latest_date": "2026-05-05",
-  "event_count": 119,
+  "event_count": 117,
   "events": [
-    [
-      "2026-02-20",
-      "Emma"
-    ],
-    [
-      "2026-02-20",
-      "The Black Rider"
-    ],
     [
       "2026-02-21",
       "33 változat Haydn-koponyára angol felirattal"
@@ -479,5 +471,5 @@
       "Trójában nem lesz háború"
     ]
   ],
-  "checked_at_budapest": "2026-02-20T04:38:29.670859+01:00"
+  "checked_at_budapest": "2026-02-21T04:29:16.130813+01:00"
 }
