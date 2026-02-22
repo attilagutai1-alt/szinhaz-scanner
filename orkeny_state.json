@@ -1,15 +1,7 @@
 {
   "latest_date": "2026-05-05",
-  "event_count": 117,
+  "event_count": 115,
   "events": [
-    [
-      "2026-02-21",
-      "33 változat Haydn-koponyára angol felirattal"
-    ],
-    [
-      "2026-02-21",
-      "INTRÓ Országkórus"
-    ],
     [
       "2026-02-22",
       "A Sötétben Látó Tündér"
@@ -471,5 +463,5 @@
       "Trójában nem lesz háború"
     ]
   ],
-  "checked_at_budapest": "2026-02-21T04:29:16.130813+01:00"
+  "checked_at_budapest": "2026-02-22T04:41:57.903508+01:00"
 }

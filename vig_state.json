@@ -1,23 +1,7 @@
 {
   "latest_date": "2026-04-26",
-  "event_count": 51,
+  "event_count": 47,
   "events": [
-    [
-      "2026-02-21",
-      "Frankenstein A Modern Prometheusz"
-    ],
-    [
-      "2026-02-21",
-      "Frankenstein – A modern Prométheusz"
-    ],
-    [
-      "2026-02-21",
-      "Jatszd Ujra Sam"
-    ],
-    [
-      "2026-02-21",
-      "Játszd újra, Sam!"
-    ],
     [
       "2026-02-22",
       "A Vandorkutya"
@@ -207,5 +191,5 @@
       "Varom Valaszat Pa"
     ]
   ],
-  "checked_at_budapest": "2026-02-21T04:36:26.693798+01:00"
+  "checked_at_budapest": "2026-02-22T04:49:06.120824+01:00"
 }
